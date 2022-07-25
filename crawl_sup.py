@@ -7,6 +7,8 @@ import psycopg2
 from itertools import product
 from time import sleep
 
+import crawl_config
+
 # 전역변수 세팅
 KEYWORD_LIST = ['정책','창업','대출']
 TAB_LIST = ['supportmeasures','businessinfo','notice'] #지원시책, 사업정보, 알림정보
@@ -32,7 +34,11 @@ def insert_sup(params):
   conn = None
 
   try:
-    conn = psycopg2.connect(host='58.120.227.138', dbname='kt_jalnagage', user='postgres', password='Wjdrlwjd1!', port=5432)
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
     cur = conn.cursor()
 
     cur.execute(sql, params)

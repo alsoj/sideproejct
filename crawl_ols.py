@@ -4,8 +4,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
 import psycopg2
-from itertools import product
-from time import sleep
+
+import crawl_config
+
 
 # 전역변수 세팅
 BASE_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN051M/page.do'
@@ -28,9 +29,13 @@ def insert_ols(params):
   conn = None
 
   try:
-    conn = psycopg2.connect(host='58.120.227.138', dbname='kt_jalnagage', user='postgres', password='Wjdrlwjd1!', port=5432)
-    cur = conn.cursor()
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
 
+    cur = conn.cursor()
     cur.execute(sql, params)
     conn.commit()
     cur.close()
