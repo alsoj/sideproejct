@@ -82,7 +82,11 @@ def get_max_id():
   max_id = 0
 
   try:
-    conn = psycopg2.connect(host='58.120.227.138', dbname='kt_jalnagage', user='postgres', password='Wjdrlwjd1!', port=5432)
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
     cur = conn.cursor()
 
     cur.execute(sql)
