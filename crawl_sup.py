@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 import psycopg2
 from itertools import product
 from time import sleep
+import datetime
 
 import crawl_config
 
@@ -158,8 +159,14 @@ def insert_sup_info(browser):
     page_list = business_list.find_elements(by=By.CLASS_NAME, value='bl_r')
     for page in page_list:
       temp_list = []
+
+      # 오늘 날짜에 해당하는 기사만 크롤링
+      reg_dt = page.find_element(by=By.CLASS_NAME, value='bl_date').text.split(':')[1].strip()
+      if reg_dt.replace(".","") != get_today():
+        return False
+
       temp_list.append(page.find_element(by=By.CLASS_NAME, value='bl_source').text.split(':')[1].strip())
-      temp_list.append(page.find_element(by=By.CLASS_NAME, value='bl_date').text.split(':')[1].strip())
+      temp_list.append(reg_dt)
       url = page.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
       if url.startswith('javascript'):
         temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1])
@@ -174,8 +181,11 @@ def insert_sup_info(browser):
 
       temp_list = [title, content, category[TARGET_KEYWORD]] + temp_list
       insert_sup(temp_list)
+
   except Exception as e:
     print("insert_sup_info 실행 중 오류 발생 : " + str(e))
+
+  return True
 
 def go_next_page(browser, keyword):
   """
@@ -204,6 +214,13 @@ def go_next_page(browser, keyword):
   except Exception as e:
     print("go_next_page 실행 중 오류 발생 :" + str(e))
 
+def get_today():
+  """
+  오늘 날짜 추출
+  :return: 오늘 날짜(YYYYMMDD)
+  """
+  return datetime.datetime.now().strftime('%Y%m%d')
+
 if __name__ == "__main__":
   print("crawl_sup.py 실행")
   browser = execute_browser()
@@ -221,8 +238,10 @@ if __name__ == "__main__":
       go = True
       while (go):
         try:
-          insert_sup_info(browser)
-          go = go_next_page(browser, TARGET_KEYWORD)
+          if insert_sup_info(browser) == False : # 오늘 일자만 크롤링
+            go = False
+          else :
+            go = go_next_page(browser, TARGET_KEYWORD)
         except Exception as e:
           print("while 수행 중 오류 발생 : " + str(e))
 
