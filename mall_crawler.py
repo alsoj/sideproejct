@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import *
-from PyQt5 import uic
+from PyQt6.QtWidgets import *
+from PyQt6 import uic
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
