@@ -1,5 +1,5 @@
 import sys
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 from PyQt6 import uic
 
 # 어플리케이션 패키지
