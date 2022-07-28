@@ -13,7 +13,7 @@ from time import sleep
 
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
-FILE_PREFIX = 'KNCA'
+FILE_PREFIX = 'KNCA_'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
@@ -28,6 +28,10 @@ BACKGROUND_YN = 'Y'
 HOME_URL = 'http://kcna.kp/kp'
 RECENT_URL = 'http://kcna.kp/kp/category/articles/q/1ee9bdb7186944f765208f34ecfb5407.kcmsf'
 
+ROWNUM = 0
+START_DATE = ''
+END_DATE = ''
+
 form_class = uic.loadUiType("KNCA_crawler.ui")[0]
 
 class KNCA_Window(QMainWindow, form_class):
@@ -38,29 +42,22 @@ class KNCA_Window(QMainWindow, form_class):
 
   def btn_start_clicked(self):
     global BACKGROUND_YN
-    BACKGROUND_YN = "Y" if self.chk_background.checkState() > 0 else "N"
+    BACKGROUND_YN = "Y" if self.chk_background.isChecked() > 0 else "N"
 
-    try:
-      global BACKGROUND_YN
-      BACKGROUND_YN = "Y" if self.chk_background.checkState() > 0 else "N"
+    self.log_text_browser.clear()
+    self.log_text_browser.append("#############################################")
+    self.log_text_browser.append("크롤링 작업 시작, 백그라운드 실행 : " + BACKGROUND_YN)
+    self.log_text_browser.append("#############################################")
+    QApplication.processEvents()
 
-      self.log_text_browser.append(" ")
-      self.log_text_browser.append("#############################################")
-      self.log_text_browser.append("크롤링 작업 시작, 백그라운드 실행 : " + BACKGROUND_YN)
-      self.log_text_browser.append("#############################################")
-      QApplication.processEvents()
+    start_ymd = self.input_start_ymd.date().toPyDate()
+    end_ymd = self.input_end_ymd.date().toPyDate()
+    str_start_ymd = start_ymd.strftime("%Y%m%d")
+    str_end_ymd = end_ymd.strftime("%Y%m%d")
+    self.log_text_browser.append("시작일자 :" + str_start_ymd + " / 종료일자 :" + str_end_ymd)
+    QApplication.processEvents()
 
-      start_ymd = self.input_start_ymd.date().toPyDate()
-      end_ymd = self.input_end_ymd.date().toPyDate()
-      str_start_ymd = start_ymd.strftime("%Y%m%d")
-      str_end_ymd = end_ymd.strftime("%Y%m%d")
-      self.log_text_browser.append("시작일자 :" +  str_start_ymd +  " / 종료일자 :" +  str_end_ymd)
-      QApplication.processEvents()
-
-    except Exception as e:
-      print(e)
-
-    if check_input_valid(start_ymd, end_ymd) :
+    if check_input_valid(start_ymd, end_ymd):
       global FILE_NAME
       FILE_NAME = FILE_PREFIX + str_start_ymd + '_' + str_end_ymd + FILE_SUFFIX
       self.log_text_browser.append("생성 파일명 : " + FILE_NAME)
@@ -80,12 +77,13 @@ class KNCA_Window(QMainWindow, form_class):
       browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
       try :
-        browser.get(HOME_URL)
-        browser.get(RECENT_URL)
+
+        connect(browser, HOME_URL)
+        connect(browser, RECENT_URL)
 
         isGo = True
-        while (isGo):
-          isGo = crawl_list_page(browser)
+        while isGo:
+          isGo = crawl_list_page(self, browser, start_ymd, end_ymd)
           go_next_page(browser)
 
       except Exception as e:
@@ -107,10 +105,10 @@ class KNCA_Window(QMainWindow, form_class):
     else :
       self.log_text_browser.append("오류 발생 : 종료일자는 시작일자보다 크거나 같아야 합니다.")
 
-def check_input_valid(start_ymd, end_ymd) :
-  if end_ymd < start_ymd :
+def check_input_valid(start_ymd, end_ymd):
+  if end_ymd < start_ymd:
     return False
-  else :
+  else:
     return True
 
 def create_excel():
@@ -131,18 +129,22 @@ def write_excel(append_row):
   wb.save(FILE_PATH + FILE_NAME)
 
 
-def crawl_list_page(browser):
+def crawl_list_page(self, browser, start_ymd, end_ymd):
   article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
   li_tags = article_link.find_elements(by=By.TAG_NAME, value='li')
   for li_tag in li_tags:
-    isTarget, isGo, targetUrl, pub_date = check_target(li_tag, start_date, end_date)
+    isTarget, isGo, targetUrl, pub_date = check_target(li_tag, start_ymd, end_ymd)
     if isTarget:
       browser.switch_to.new_window('tab')
-      browser.get(targetUrl)
+      connect(browser, targetUrl)
       title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
-      global rownum
-      rownum += 1
-      write_excel([rownum, pub_date, title, pre_content1, pre_content2, pre_content3, content])
+      global ROWNUM
+      ROWNUM += 1
+
+      self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
+      QApplication.processEvents()
+
+      write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
       browser.close()
       browser.switch_to.window(browser.window_handles[0])
 
@@ -203,6 +205,21 @@ def get_detail_info(browser):
 def go_next_page(browser):
   next_btn = browser.find_element(by=By.CLASS_NAME, value='next-ctrl').find_element(by=By.TAG_NAME, value='a')
   next_btn.click()
+
+
+def connect(browser, url):
+  retries = RETRY_CNT
+  while (retries > 0):
+    try:
+      browser.get(url)
+      break
+    except Exception as e:
+      retries = retries - 1
+      sleep(SLEEP_TIME)
+      print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+      print(e)
+      continue
+
 
 if __name__ == "__main__":
   app = QApplication(sys.argv)
