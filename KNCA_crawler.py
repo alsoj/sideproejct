@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import *
+from PyQt5 import QtWidgets
 from PyQt6 import uic
 
 # 어플리케이션 패키지
@@ -13,7 +13,7 @@ from time import sleep
 
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
-FILE_PREFIX = 'RDNEWS_'
+FILE_PREFIX = 'KNCA_'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
@@ -24,9 +24,9 @@ RETRY_CNT = 10
 # 전역변수 - 백그라운드 실행 관련
 BACKGROUND_YN = 'Y'
 
-form_class = uic.loadUiType("RDNEWS_crawler.ui")[0]
+form_class = uic.loadUiType("KNCA_crawler.ui")[0]
 
-class MyWindow(QMainWindow, form_class):
+class MyWindow(QtWidgets.QMainWindow, form_class):
   def __init__(self):
     super().__init__()
     self.setupUi(self)
@@ -42,14 +42,14 @@ class MyWindow(QMainWindow, form_class):
       self.log_text_browser.append("#############################################")
       self.log_text_browser.append("크롤링 작업 시작, 백그라운드 실행 : " + BACKGROUND_YN)
       self.log_text_browser.append("#############################################")
-      QApplication.processEvents()
+      QtWidgets.QApplication.processEvents()
 
       start_ymd = self.input_start_ymd.date().toPyDate()
       end_ymd = self.input_end_ymd.date().toPyDate()
       str_start_ymd = start_ymd.strftime("%Y%m%d")
       str_end_ymd = end_ymd.strftime("%Y%m%d")
       self.log_text_browser.append("시작일자 :" +  str_start_ymd +  " / 종료일자 :" +  str_end_ymd)
-      QApplication.processEvents()
+      QtWidgets.QApplication.processEvents()
 
     except Exception as e:
       print(e)
@@ -58,13 +58,13 @@ class MyWindow(QMainWindow, form_class):
       global FILE_NAME
       FILE_NAME = FILE_PREFIX + str_start_ymd + '_' + str_end_ymd + FILE_SUFFIX
       self.log_text_browser.append("생성 파일명 : " + FILE_NAME)
-      QApplication.processEvents()
+      QtWidgets.QApplication.processEvents()
 
       create_excel()  # 엑셀파일 생성
 
       self.log_text_browser.append(" ")
       self.log_text_browser.append("크롬 브라우저가 실행 중입니다.")
-      QApplication.processEvents()
+      QtWidgets.QApplication.processEvents()
 
       # 백그라운드 실행 세팅
       options = webdriver.ChromeOptions()
@@ -87,7 +87,7 @@ class MyWindow(QMainWindow, form_class):
         self.log_text_browser.append("크롤링 작업 오류 발생")
         self.log_text_browser.append(str(e))
         self.log_text_browser.append("#############################################")
-        QApplication.processEvents()
+        QtWidgets.QApplication.processEvents()
 
       finally:
         self.log_text_browser.append(" ")
@@ -95,7 +95,7 @@ class MyWindow(QMainWindow, form_class):
         self.log_text_browser.append("크롤링 작업 종료")
         self.log_text_browser.append("#############################################")
         browser.quit()
-        QApplication.processEvents()
+        QtWidgets.QApplication.processEvents()
 
     else :
       self.log_text_browser.append("오류 발생 : 종료일자는 시작일자보다 크거나 같아야 합니다.")
@@ -133,7 +133,7 @@ def crawl_by_date(self, browser, date):
   self.log_text_browser.append(" ")
   self.log_text_browser.append("#############################################")
   self.log_text_browser.append(date + " 크롤링 작업 시작")
-  QApplication.processEvents()
+  QtWidgets.QApplication.processEvents()
 
   wb = load_workbook(FILE_PATH+FILE_NAME, data_only=True)
   ws = wb.active
@@ -149,7 +149,7 @@ def crawl_by_date(self, browser, date):
 
     line_no = news_line.find_element(by=By.CLASS_NAME, value='ListNewsLineNo').text.strip()
     self.log_text_browser.append(line_no.replace('.','').strip() + "번째 기사 진행 중")
-    QApplication.processEvents()
+    QtWidgets.QApplication.processEvents()
 
     line_title = news_line.find_element(by=By.CLASS_NAME, value='ListNewsLineTitleW').text.strip()
     line_writer = news_line.find_element(by=By.CLASS_NAME, value='ListNewsLineWriter').text.strip()
@@ -213,7 +213,7 @@ def crawl_by_date(self, browser, date):
     browser.switch_to.window(browser.window_handles[0])
 
   self.log_text_browser.append("#############################################")
-  QApplication.processEvents()
+  QtWidgets.QApplication.processEvents()
 
 ####################################################
 # 목록-기사 정보 추출
@@ -247,7 +247,7 @@ def connect(browser, url):
       continue
 
 if __name__ == "__main__":
-  app = QApplication(sys.argv)
+  app = QtWidgets.QApplication(sys.argv)
   myWindow = MyWindow()
   myWindow.show()
   app.exec_()
