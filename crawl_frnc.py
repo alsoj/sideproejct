@@ -5,11 +5,13 @@ from selenium.webdriver.common.by import By
 
 import psycopg2
 import datetime
+from time import sleep
 import crawl_config
 
 # 전역변수 세팅
 BASE_URL = 'https://franchise.ftc.go.kr'
-SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
+# SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
+SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do?searchCondition=&searchKeyword=&column=&selUpjong=&selIndus=&pageUnit=500&pageIndex=18'
 
 from enum import Enum
 class Category(Enum):
@@ -34,7 +36,7 @@ class Category(Enum):
     교육외국어 = ('B04', '서비스')
     스포츠관련 = ('B05', '서비스')
     교육교과 = ('B06', '서비스')
-    유아관련 = ('B07', '서비스')
+    유아관련교육외 = ('B07', '서비스')
     안경 = ('B08', '서비스')
     숙박 = ('B09', '서비스')
     자동차관련 = ('B10', '서비스')
@@ -99,7 +101,13 @@ def execute_browser():
   return browser
 
 def get_category_info(cate):
-  return Category[cate].code
+
+    try:
+        category = Category[cate].code
+    except Exception as e:
+        category = ''
+
+    return category
 
 
 def get_list_info(tr):
@@ -128,18 +136,26 @@ def go_to_next(browser):
   li_tags = pagination.find_elements(by=By.TAG_NAME, value='li')
 
   goNext = False
+  page_num = 99999
   for li_tag in li_tags:
     a_tag = li_tag.find_element(by=By.TAG_NAME, value='a')
-    if goNext:
-      a_tag.click()
-      break
-    elif a_tag.get_attribute('href') is None:
-      goNext = True
+    href = a_tag.get_attribute('href')
+
+    if href is None:
+        page_num = a_tag.text
+        goNext = True
+    elif href.endswith(str(page_num)):
+        print("마지막 페이지입니다.")
+        return False
+    elif goNext:
+        a_tag.click()
+        return True
 
 
 if __name__ == "__main__":
   print("crawl_frnc.py 실행")
   browser = execute_browser()
+  browser.get(SEARCH_URL)
   goNext = True
   try:
     while(goNext):
@@ -148,14 +164,14 @@ if __name__ == "__main__":
 
         for tr in trs:
           id, category, detail_url = get_list_info(tr)
+          if int(id) < 3162:
+              browser.switch_to.new_window('tab')
+              browser.get(BASE_URL + detail_url)
+              fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee = get_detail_info(browser)
+              browser.close()
+              browser.switch_to.window(browser.window_handles[0])
 
-          browser.switch_to.new_window('tab')
-          browser.get(BASE_URL + detail_url)
-          fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee = get_detail_info(browser)
-          browser.close()
-          browser.switch_to.window(browser.window_handles[0])
-
-          insert_frnc([id, category, fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee])
+              insert_frnc([id, category, fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee])
 
         goNext = go_to_next(browser)
 
