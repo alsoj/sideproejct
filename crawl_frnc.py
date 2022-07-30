@@ -10,8 +10,8 @@ import crawl_config
 
 # 전역변수 세팅
 BASE_URL = 'https://franchise.ftc.go.kr'
-# SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
-SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do?searchCondition=&searchKeyword=&column=&selUpjong=&selIndus=&pageUnit=500&pageIndex=18'
+SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
+# SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do?searchCondition=&searchKeyword=&column=&selUpjong=&selIndus=&pageUnit=500&pageIndex=23'
 
 from enum import Enum
 class Category(Enum):
@@ -152,6 +152,37 @@ def go_to_next(browser):
         return True
 
 
+def get_max_id():
+  """
+  기존 크롤링 데이터 중 max ID 추출
+  :return:
+  """
+  sql = """
+          select COALESCE(MAX(ID),0) 
+          from tb_crawling_frnc_intrf;
+       """
+  conn = None
+  max_id = 0
+
+  try:
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
+    cur = conn.cursor()
+
+    cur.execute(sql)
+    max_id = cur.fetchone()[0]
+
+  except (Exception, psycopg2.DatabaseError) as error:
+    print(error)
+  finally:
+    if conn is not None:
+      conn.close()
+
+  return max_id
+
 if __name__ == "__main__":
   print("crawl_frnc.py 실행")
   browser = execute_browser()
@@ -162,9 +193,11 @@ if __name__ == "__main__":
         tbody = browser.find_element(by=By.TAG_NAME, value='tbody')
         trs = tbody.find_elements(by=By.TAG_NAME, value='tr')
 
+        hasNew = True
         for tr in trs:
           id, category, detail_url = get_list_info(tr)
-          if int(id) < 3162:
+
+          if int(id) > int(get_max_id()):
               browser.switch_to.new_window('tab')
               browser.get(BASE_URL + detail_url)
               fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee = get_detail_info(browser)
@@ -172,8 +205,14 @@ if __name__ == "__main__":
               browser.switch_to.window(browser.window_handles[0])
 
               insert_frnc([id, category, fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee])
+          else :
+            hasNew = False
+            break
 
-        goNext = go_to_next(browser)
+        if hasNew:
+            goNext = go_to_next(browser)
+        else :
+            goNext = False
 
   except Exception as e:
     print("crawl_frnc.py 오류")
