@@ -45,7 +45,7 @@ class INSTA_Window(QMainWindow, form_class):
       return False
 
     options = webdriver.ChromeOptions()
-    # options.add_argument("headless")
+    options.add_argument("headless")
     browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     try:
       today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
