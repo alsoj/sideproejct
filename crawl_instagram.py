@@ -55,7 +55,6 @@ class INSTA_Window(QMainWindow, form_class):
       FILE_NAME = today + "_" + short_code + FILE_SUFFIX
       self.setLogText("생성 파일명 : " + FILE_NAME)
       create_excel()
-      self.setLogText("엑셀 파일 생성 완료!")
 
       self.logBrowser.append("로그인 중 입니다.")
       login_instagram(browser, input_id, input_pw)
