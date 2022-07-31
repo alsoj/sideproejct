@@ -50,6 +50,9 @@ class INSTA_Window(QMainWindow, form_class):
     try:
       today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
       short_code = get_short_code(input_url)
+      if len(short_code) == 0:
+        self.setLogText("게시물 URL이 올바르지 않습니다.")
+        return False
 
       global FILE_NAME
       FILE_NAME = today + "_" + short_code + FILE_SUFFIX
@@ -139,7 +142,13 @@ def login_instagram(browser, id, password):
 
 # 게시글 주소에서 short code 추출
 def get_short_code(target_url):
-    return target_url.split("/")[4]
+  short_code = ''
+  try:
+    short_code = target_url.split("/")[4]
+  except Exception as e:
+    short_code = ''
+  finally:
+    return short_code
 
 def get_likers(browser, short_code):
 
