@@ -18,8 +18,8 @@ FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
 # 전역변수 - 재시도 관련
-SLEEP_TIME = 60
-RETRY_CNT = 10
+SLEEP_TIME = 10
+RETRY_CNT = 5
 
 # 전역변수 - 백그라운드 실행 관련
 BACKGROUND_YN = 'Y'
@@ -130,6 +130,20 @@ def write_excel(append_row):
 
 
 def crawl_list_page(self, browser, start_ymd, end_ymd):
+  cur_url = browser.current_url
+  retries = RETRY_CNT
+  while (retries > 0):
+    try:
+      browser.get(cur_url)
+      article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
+      break
+    except Exception as e:
+      retries = retries - 1
+      sleep(SLEEP_TIME)
+      print("목록 페이지 로딩 중 응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+      print(e)
+      continue
+
   article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
   li_tags = article_link.find_elements(by=By.TAG_NAME, value='li')
   for li_tag in li_tags:
@@ -177,6 +191,20 @@ def trans_year(north_year):
 
 
 def get_detail_info(browser):
+  cur_url = browser.current_url
+  retries = RETRY_CNT
+  while (retries > 0):
+    try:
+      browser.get(cur_url)
+      title = browser.find_element(by=By.CLASS_NAME, value='article-main-title').text
+      break
+    except Exception as e:
+      retries = retries - 1
+      sleep(SLEEP_TIME)
+      print("상세 페이지 로딩 중 응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+      print(e)
+      continue
+
   title = browser.find_element(by=By.CLASS_NAME, value='article-main-title').text
   content_wrapper = browser.find_element(by=By.CLASS_NAME, value='content-wrapper')
   p_tags = content_wrapper.find_elements(by=By.TAG_NAME, value='p')
@@ -204,7 +232,18 @@ def get_detail_info(browser):
 
 def go_next_page(browser):
   next_btn = browser.find_element(by=By.CLASS_NAME, value='next-ctrl').find_element(by=By.TAG_NAME, value='a')
-  next_btn.click()
+  retries = RETRY_CNT
+  while (retries > 0):
+    try:
+      browser.execute_script(next_btn.get_attribute('href'))
+      article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
+      break
+    except Exception as e:
+      retries = retries - 1
+      sleep(SLEEP_TIME)
+      print("다음 페이지 이동 중 응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+      print(e)
+      continue
 
 
 def connect(browser, url):
@@ -212,6 +251,7 @@ def connect(browser, url):
   while (retries > 0):
     try:
       browser.get(url)
+      print("접속 성공 : ", url)
       break
     except Exception as e:
       retries = retries - 1
