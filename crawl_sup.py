@@ -23,6 +23,33 @@ category = {
    ,'대출' : 'loans'
 }
 
+def delete_sup():
+  """
+    DB 삭제 - 당일자 데이터 삭제 후 재크롤링
+    """
+  sql = """DELETE FROM tb_crawling_sup_intrf
+            WHERE reg_dt = to_char(now(), 'YYYY.MM.DD')
+         """
+  conn = None
+
+  try:
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
+    cur = conn.cursor()
+
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+
+  except (Exception, psycopg2.DatabaseError) as error:
+    print(error)
+  finally:
+    if conn is not None:
+      conn.close()
+
 
 def insert_sup(params):
   """
@@ -226,6 +253,8 @@ if __name__ == "__main__":
   browser = execute_browser()
 
   try:
+    delete_sup() # 당일자 데이터 삭제 후 크롤링 진행
+
     for task in CRAWL_LIST:
       TARGET_KEYWORD, TARGET_TAB = task
 
