@@ -12,6 +12,7 @@ import datetime
 from time import sleep
 import json
 from openpyxl import Workbook, load_workbook
+import unicodedata
 
 BASE_URL = 'https://www.instagram.com/'
 LOGIN_URL = BASE_URL + 'accounts/login/'
@@ -39,7 +40,6 @@ class INSTA_Window(QMainWindow, form_class):
     input_id = self.edit_id.text()
     input_pw = self.edit_pw.text()
     input_url = self.edit_url.text()
-    short_code = get_short_code(input_url)
 
     if self.check_input_valid() is not True:
       return False
@@ -49,16 +49,23 @@ class INSTA_Window(QMainWindow, form_class):
     browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     try:
       today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+      short_code = get_short_code(input_url)
+
       global FILE_NAME
       FILE_NAME = today + "_" + short_code + FILE_SUFFIX
       self.setLogText("생성 파일명 : " + FILE_NAME)
       create_excel()
       self.setLogText("엑셀 파일 생성 완료!")
 
+      self.logBrowser.append("로그인 중 입니다.")
       login_instagram(browser, input_id, input_pw)
       sleep(5)
+
+      self.logBrowser.append("좋아요 크롤링 중 입니다.")
       get_likers(browser, short_code)
       sleep(5)
+
+      self.logBrowser.append("댓글 크롤링 중 입니다.")
       get_comments(browser, short_code)
 
     except Exception as e:
@@ -162,7 +169,7 @@ def get_likers(browser, short_code):
 
     for liker in likers:
       rownum += 1
-      write_excel('likers', [rownum, liker['node']['username'], liker['node']['full_name']])
+      write_excel('likers', [rownum, liker['node']['username'], unicodedata.normalize('NFC',liker['node']['full_name'])])
       # print(rownum, liker['node']['username'], liker['node']['full_name'])
 
 def get_comments(browser, short_code):
