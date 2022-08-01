@@ -10,6 +10,33 @@ import crawl_config
 # 전역변수 세팅
 BASE_URL = 'http://sbiznews.com/news/?menu=1&menuid=44&action=index'
 
+def delete_news():
+  """
+    DB 삭제 - 당일자 데이터 삭제 후 재크롤링
+    """
+  sql = """DELETE FROM tb_crawling_news_intrf
+            WHERE reg_dt = to_char(now(), 'YYYYMMDD')
+         """
+  conn = None
+
+  try:
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
+    cur = conn.cursor()
+
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+
+  except (Exception, psycopg2.DatabaseError) as error:
+    print(error)
+  finally:
+    if conn is not None:
+      conn.close()
+
 def insert_news(params):
   """
   DB 입력
@@ -106,6 +133,8 @@ if __name__ == "__main__":
   browser = execute_browser()
 
   try:
+    delete_news()  # 당일자 데이터 삭제 후 크롤링 진행
+
     today = get_today()
     crawl_list = get_crawl_target(browser, today)
 
