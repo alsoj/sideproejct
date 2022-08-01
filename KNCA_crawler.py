@@ -115,7 +115,7 @@ def create_excel():
   wb = Workbook()
   ws = wb.active
 
-  sub = ['번호','게재일자','기사 제목','(내용1)','내용2','내용3','기사 내용']
+  sub = ['번호','게재일자','기사 제목','내용1','내용2','내용3','기사 내용']
   for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
     ws.cell(row=1, column=j).value = kwd
 
@@ -174,7 +174,7 @@ def check_target(li_tag, start_date, end_date):
   day = int(date[2])
 
   pub_date = datetime.date(year, month, day)
-  if start_date <= pub_date and pub_date <= end_date:
+  if start_date <= pub_date <= end_date:
     isTarget = True
     isGo = True
   elif pub_date < start_date:
@@ -215,7 +215,7 @@ def get_detail_info(browser):
   content = ''
   for p_tag in p_tags:
     text = p_tag.text
-    if text.startswith('(') and text.endswith(')'):
+    if text.startswith('(') and text.endswith(')') and '평양'in text and '조선중앙통신' in text:
       text = text.replace("(", "").replace(")", "")
       split_text = text.split(' ')
       pre_content1 = split_text[0]
