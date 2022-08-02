@@ -59,8 +59,17 @@ class INSTA_Window(QMainWindow, form_class):
       self.setLogText("생성 파일명 : " + FILE_NAME)
       create_excel()
 
-      self.logBrowser.append("로그인 중 입니다.")
-      login_instagram(browser, input_id, input_pw)
+      self.logBrowser.append("로그인 진행 중 입니다.")
+      login_result = login_instagram(browser, input_id, input_pw)
+      if login_result == 'OK':
+        self.setLogText("로그인에 성공하였습니다.")
+      elif login_result == 'IDERR':
+        self.setLogText("사용자 ID가 올바르지 않습니다.")
+        return
+      elif login_result == 'PWERR':
+        self.setLogText("패스워드가 올바르지 않습니다.")
+        return
+
       sleep(5)
 
       self.logBrowser.append("좋아요 크롤링 중 입니다.")
@@ -139,6 +148,14 @@ def login_instagram(browser, id, password):
     inputs[0].send_keys(id)
     inputs[1].send_keys(password)
     inputs[1].submit()
+    sleep(3)
+
+    if '잘못된 비밀번호' in browser.page_source:
+      return 'PWERR'
+    elif '입력한 사용자 이름' in browser.page_source:
+      return 'IDERR'
+    else:
+      return 'OK'
 
 # 게시글 주소에서 short code 추출
 def get_short_code(target_url):
