@@ -71,7 +71,7 @@ class INSTA_Window(QMainWindow, form_class):
         return
 
       # 사용자가 보안코드를 입력할 시간이 필요
-      sleep(120)
+      # sleep(120)
 
       self.logBrowser.append("좋아요 크롤링 중 입니다.")
       get_likers(browser, short_code)
