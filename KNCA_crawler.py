@@ -7,6 +7,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
 from openpyxl import Workbook, load_workbook
 import datetime
 from time import sleep
@@ -50,16 +52,19 @@ class KNCA_Window(QMainWindow, form_class):
     self.log_text_browser.append("#############################################")
     QApplication.processEvents()
 
-    start_ymd = self.input_start_ymd.date().toPyDate()
-    end_ymd = self.input_end_ymd.date().toPyDate()
-    str_start_ymd = start_ymd.strftime("%Y%m%d")
-    str_end_ymd = end_ymd.strftime("%Y%m%d")
-    self.log_text_browser.append("시작일자 :" + str_start_ymd + " / 종료일자 :" + str_end_ymd)
+    start_page = self.spin_start_page.value()
+    end_page = self.spin_end_page.value()
+
+    # start_ymd = self.input_start_ymd.date().toPyDate()
+    # end_ymd = self.input_end_ymd.date().toPyDate()
+    # str_start_ymd = start_ymd.strftime("%Y%m%d")
+    # str_end_ymd = end_ymd.strftime("%Y%m%d")
+    self.log_text_browser.append("시작 페이지 :" + str(start_page) + " / 종료 페이지 :" + str(end_page))
     QApplication.processEvents()
 
-    if check_input_valid(start_ymd, end_ymd):
+    if check_input_valid(start_page, end_page):
       global FILE_NAME
-      FILE_NAME = FILE_PREFIX + str_start_ymd + '_' + str_end_ymd + FILE_SUFFIX
+      FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + FILE_PREFIX + str(start_page) + '_' + str(end_page) + FILE_SUFFIX
       self.log_text_browser.append("생성 파일명 : " + FILE_NAME)
       QApplication.processEvents()
 
@@ -71,20 +76,31 @@ class KNCA_Window(QMainWindow, form_class):
 
       # 백그라운드 실행 세팅
       options = webdriver.ChromeOptions()
+      options.add_argument("window-size=1920x1080")  # 화면크기(전체화면)
+      options.add_argument("disable-gpu")
+      options.add_argument("disable-infobars")
+      options.add_argument("--disable-extensions")
+
+      caps = DesiredCapabilities().CHROME
+      caps["pageLoadStrategy"] = "none"
       if BACKGROUND_YN == "Y":
         options.add_argument("headless")
 
       browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-      try :
+      try:
 
         connect(browser, HOME_URL)
         connect(browser, RECENT_URL)
 
-        isGo = True
-        while isGo:
-          isGo = crawl_list_page(self, browser, start_ymd, end_ymd)
-          go_next_page(browser)
+        for i in range(start_page, end_page+1):
+          go_to_page(browser, i)
+          crawl_list_page(self, browser)
+
+        # isGo = True
+        # while isGo:
+        #   isGo = crawl_list_page(self, browser, start_ymd, end_ymd)
+        #   go_next_page(browser)
 
       except Exception as e:
         self.log_text_browser.append(" ")
@@ -105,8 +121,8 @@ class KNCA_Window(QMainWindow, form_class):
     else :
       self.log_text_browser.append("오류 발생 : 종료일자는 시작일자보다 크거나 같아야 합니다.")
 
-def check_input_valid(start_ymd, end_ymd):
-  if end_ymd < start_ymd:
+def check_input_valid(start_page, end_page):
+  if end_page < start_page:
     return False
   else:
     return True
@@ -129,7 +145,7 @@ def write_excel(append_row):
   wb.save(FILE_PATH + FILE_NAME)
 
 
-def crawl_list_page(self, browser, start_ymd, end_ymd):
+def crawl_list_page(self, browser):
   cur_url = browser.current_url
   retries = RETRY_CNT
   while (retries > 0):
@@ -147,22 +163,28 @@ def crawl_list_page(self, browser, start_ymd, end_ymd):
   article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
   li_tags = article_link.find_elements(by=By.TAG_NAME, value='li')
   for li_tag in li_tags:
-    isTarget, isGo, targetUrl, pub_date = check_target(li_tag, start_ymd, end_ymd)
-    if isTarget:
-      browser.switch_to.new_window('tab')
-      connect(browser, targetUrl)
-      title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
-      global ROWNUM
-      ROWNUM += 1
+    targetUrl = li_tag.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
+    publish_date = li_tag.find_element(by=By.CLASS_NAME, value='publish-time')
 
-      self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
-      QApplication.processEvents()
+    date = publish_date.text.replace("[", "").replace("]", "").replace("주체", "").split(".")
+    year = int(trans_year(date[0]))
+    month = int(date[1])
+    day = int(date[2])
 
-      write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
-      browser.close()
-      browser.switch_to.window(browser.window_handles[0])
+    pub_date = datetime.date(year, month, day)
 
-  return isGo
+    browser.switch_to.new_window('tab')
+    connect(browser, targetUrl)
+    title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
+    global ROWNUM
+    ROWNUM += 1
+
+    self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
+    QApplication.processEvents()
+
+    write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
+    browser.close()
+    browser.switch_to.window(browser.window_handles[0])
 
 def check_target(li_tag, start_date, end_date):
   detail_url = li_tag.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
@@ -229,8 +251,27 @@ def get_detail_info(browser):
 
   return title, pre_content1, pre_content2, pre_content3, content
 
+# 특정 페이지로 이동
+def go_to_page(browser, page):
+  retries = RETRY_CNT
+  while (retries > 0):
+    try:
+      browser.execute_script(f'javascript:page({page});')
+      article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
+      break
+    except Exception as e:
+      retries = retries - 1
+      sleep(SLEEP_TIME)
+      print("다음 페이지 이동 중 응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+      print(e)
+      continue
 
 def go_next_page(browser):
+  # prev-page-ctrl : 5 page전
+  # prev-ctrl : 1 page 전
+  # next-ctrl : 1 page 후
+  # next-page-ctrl : 5 page 후
+
   next_btn = browser.find_element(by=By.CLASS_NAME, value='next-ctrl').find_element(by=By.TAG_NAME, value='a')
   retries = RETRY_CNT
   while (retries > 0):

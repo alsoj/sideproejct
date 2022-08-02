@@ -35,28 +35,14 @@
           </font>
          </property>
          <property name="text">
-          <string>시작일자</string>
+          <string>시작 페이지</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QDateEdit" name="input_start_ymd">
-         <property name="dateTime">
-          <datetime>
-           <hour>0</hour>
-           <minute>0</minute>
-           <second>0</second>
-           <year>2022</year>
-           <month>8</month>
-           <day>1</day>
-          </datetime>
-         </property>
-         <property name="date">
-          <date>
-           <year>2022</year>
-           <month>8</month>
-           <day>1</day>
-          </date>
+        <widget class="QSpinBox" name="spin_start_page">
+         <property name="minimum">
+          <number>1</number>
          </property>
         </widget>
        </item>
@@ -73,28 +59,14 @@
           </font>
          </property>
          <property name="text">
-          <string>종료일자</string>
+          <string>종료 페이지</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QDateEdit" name="input_end_ymd">
-         <property name="dateTime">
-          <datetime>
-           <hour>0</hour>
-           <minute>0</minute>
-           <second>0</second>
-           <year>2022</year>
-           <month>8</month>
-           <day>1</day>
-          </datetime>
-         </property>
-         <property name="date">
-          <date>
-           <year>2022</year>
-           <month>8</month>
-           <day>1</day>
-          </date>
+        <widget class="QSpinBox" name="spin_end_page">
+         <property name="minimum">
+          <number>1</number>
          </property>
         </widget>
        </item>
