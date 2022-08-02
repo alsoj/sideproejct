@@ -45,7 +45,7 @@ class INSTA_Window(QMainWindow, form_class):
       return False
 
     options = webdriver.ChromeOptions()
-    options.add_argument("headless")
+    # options.add_argument("headless")
     browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     try:
       today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -70,7 +70,8 @@ class INSTA_Window(QMainWindow, form_class):
         self.setLogText("패스워드가 올바르지 않습니다.")
         return
 
-      sleep(5)
+      # 사용자가 보안코드를 입력할 시간이 필요
+      sleep(120)
 
       self.logBrowser.append("좋아요 크롤링 중 입니다.")
       get_likers(browser, short_code)
@@ -84,7 +85,7 @@ class INSTA_Window(QMainWindow, form_class):
       self.setLogText(str(e))
       self.setLogText("#######################################")
     finally:
-      browser.quit()
+      # browser.quit()
       self.setLogText("크롤링 작업이 종료되었습니다.")
       self.setLogText("#######################################")
 
