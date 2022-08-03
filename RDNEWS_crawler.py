@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import *
-from PyQt5 import uic
+from PyQt6.QtWidgets import *
+from PyQt6 import uic
 
 # 어플리케이션 패키지
 from selenium import webdriver
@@ -250,4 +250,4 @@ if __name__ == "__main__":
   app = QApplication(sys.argv)
   myWindow = MyWindow()
   myWindow.show()
-  app.exec_()
+  app.exec()
