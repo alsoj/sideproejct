@@ -7,9 +7,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+
 from openpyxl import Workbook, load_workbook
 import datetime
 from time import sleep
+import unicodedata
 
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
@@ -36,7 +38,7 @@ class MyWindow(QMainWindow, form_class):
   def btn_start_clicked(self):
     try:
       global BACKGROUND_YN
-      BACKGROUND_YN = "Y" if self.chk_background.checkState() > 0 else "N"
+      BACKGROUND_YN = "Y" if self.chk_background.isChecked() > 0 else "N"
 
       self.log_text_browser.append(" ")
       self.log_text_browser.append("#############################################")
@@ -126,6 +128,21 @@ def create_excel():
 
     wb.save(FILE_PATH+FILE_NAME)
 
+# text 타입 구분
+def get_text_type(line, detail_title, detail_content):
+  font_tag = line.find_elements(by=By.TAG_NAME, value='font')
+  if len(font_tag) > 0 and 'font-size' in font_tag[0].get_attribute('style'):
+    if 'bold' in font_tag[0].get_attribute('style'):  # bold인 것들 주제목
+      return "TITLE"
+    elif len(detail_title) > 0 and len(detail_content) == 0:  # 제목은 나오고, 내용은 나오지 않은 경우
+      return "POST_TITLE"
+    elif len(detail_title) == 0 and len(detail_content) == 0:  # 제목과 내용이 아직 나오지 않은 경우
+      return "PRE_TITLE"
+    else:
+      return "CONTENT"
+  else:
+    return "CONTENT"
+
 ####################################################
 # 날짜별 크롤링
 ####################################################
@@ -157,12 +174,12 @@ def crawl_by_date(self, browser, date):
 
     article_title, article_type, article_page = get_article_info(line_title)
 
-    temp_row.append(line_no)
-    temp_row.append(article_type)
-    temp_row.append(article_title)
-    temp_row.append(article_page)
-    temp_row.append(line_writer)
-    temp_row.append(line_date)
+    temp_row.append(unicodedata.normalize('NFKC', line_no))
+    temp_row.append(unicodedata.normalize('NFKC', article_type))
+    temp_row.append(unicodedata.normalize('NFKC', article_title))
+    temp_row.append(unicodedata.normalize('NFKC', article_page))
+    temp_row.append(unicodedata.normalize('NFKC', line_writer))
+    temp_row.append(unicodedata.normalize('NFKC', line_date))
 
     # 상세창 팝업
     title_popup = news_line.find_element(by=By.CLASS_NAME, value='ListNewsLineTitleW')
@@ -189,22 +206,21 @@ def crawl_by_date(self, browser, date):
     detail_content_list = browser.find_elements(by=By.CLASS_NAME, value='ArticleContent')
 
     for detail_line in detail_content_list:
-      title = detail_line.find_elements(by=By.TAG_NAME, value='font')
+      line_type = get_text_type(detail_line, detail_title, detail_content)
+      # print(line_type, detail_line.text)
+      if line_type == "TITLE":
+        detail_title += detail_line.text + '\r\n'
+      elif line_type == "PRE_TITLE":
+        detail_sub_title_pre += detail_line.text + '\r\n'  # 부제목(앞)
+      elif line_type == "POST_TITLE":
+        detail_sub_title_next += detail_line.text + '\r\n'  # 부제목(뒤)
+      elif line_type == "CONTENT":
+        detail_content += detail_line.text + '\r\n'  # 본문 내용
 
-      if title and title[0].text.strip() != '' :
-          if 'bold' in title[0].get_attribute('style') : # bold인 것들 주제목
-              detail_title += title[0].text + '\r\n'
-          elif len(detail_title) > 0 : # 제목이 이미 들어간 경우
-            detail_sub_title_next += title[0].text + '\r\n' # 부제목(뒤)
-          else :
-            detail_sub_title_pre += title[0].text + '\r\n' # 부제목(앞)
-      elif detail_line.text.strip() != '' and 'right' not in detail_line.get_attribute('style') : # 우측정렬은 글, 사진 작성자
-          detail_content += detail_line.text + '\r\n'
-
-    temp_row.append(detail_content)
-    temp_row.append(detail_title.strip())
-    temp_row.append(detail_sub_title_pre.strip())
-    temp_row.append(detail_sub_title_next.strip())
+    temp_row.append(unicodedata.normalize('NFKC', detail_content.strip()))
+    temp_row.append(unicodedata.normalize('NFKC', detail_title.strip()))
+    temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_pre.strip()))
+    temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_next.strip()))
     ws.append(temp_row)
     wb.save(FILE_PATH+FILE_NAME)
 
