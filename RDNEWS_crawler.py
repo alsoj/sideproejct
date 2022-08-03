@@ -12,6 +12,7 @@ from openpyxl import Workbook, load_workbook
 import datetime
 from time import sleep
 import unicodedata
+import re
 
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
@@ -214,7 +215,7 @@ def crawl_by_date(self, browser, date):
         detail_sub_title_pre += detail_line.text + '\r\n'  # 부제목(앞)
       elif line_type == "POST_TITLE":
         detail_sub_title_next += detail_line.text + '\r\n'  # 부제목(뒤)
-      elif line_type == "CONTENT":
+      elif line_type == "CONTENT" and line_writer not in detail_line.text: #마지막 작성자 제외
         detail_content += detail_line.text + '\r\n'  # 본문 내용
 
     temp_row.append(unicodedata.normalize('NFKC', detail_content.strip()))
@@ -236,15 +237,19 @@ def crawl_by_date(self, browser, date):
 ####################################################
 def get_article_info(title_full):
   if title_full.startswith('['):
-    article_title = title_full[title_full.find(']') + 1: title_full.rfind('[')].strip()
     article_type = title_full[title_full.find('[') + 1: title_full.find(']')].strip()
-    article_page = title_full[title_full.rfind('[') + 1: title_full.rfind(']')].strip()
+    article_page = re.findall('\d면', title_full)[0]
   else:
-    article_title = title_full[: title_full.rfind('[')].strip()
     article_type = ''
-    article_page = title_full[title_full.rfind('[') + 1: title_full.rfind(']')].strip()
+    article_page = re.findall('\d면', title_full)[0]
 
-  return article_title, article_type, article_page
+  article_title = title_full
+  article_title = article_title.replace(article_type, "")
+  article_title = article_title.replace(article_page, "")
+  article_title = article_title.replace("[", "")
+  article_title = article_title.replace("]", "")
+
+  return article_title.strip(), article_type.strip(), article_page.strip()
 
 ####################################################
 # connect 연결(재시도)
