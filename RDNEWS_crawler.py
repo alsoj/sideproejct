@@ -236,18 +236,23 @@ def crawl_by_date(self, browser, date):
 # 목록-기사 정보 추출
 ####################################################
 def get_article_info(title_full):
-  if title_full.startswith('['):
-    article_type = title_full[title_full.find('[') + 1: title_full.find(']')].strip()
-    article_page = re.findall('\d면', title_full)[0]
-  else:
-    article_type = ''
-    article_page = re.findall('\d면', title_full)[0]
+  try:
+    if title_full.startswith('['):
+      article_type = title_full[title_full.find('[') + 1: title_full.find(']')].strip()
+      article_page = re.findall('\d면', title_full)[0]
+    else:
+      article_type = ''
+      article_page = re.findall('\d면', title_full)[0]
 
-  article_title = title_full
-  article_title = article_title.replace(article_type, "")
-  article_title = article_title.replace(article_page, "")
-  article_title = article_title.replace("[", "")
-  article_title = article_title.replace("]", "")
+    article_title = title_full
+    article_title = article_title.replace(article_type, "")
+    article_title = article_title.replace(article_page, "")
+    article_title = article_title.replace("[", "")
+    article_title = article_title.replace("]", "")
+  except Exception as e:
+    article_title = title_full
+    article_type = ''
+    article_page = ''
 
   return article_title.strip(), article_type.strip(), article_page.strip()
 
