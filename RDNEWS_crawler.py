@@ -187,43 +187,47 @@ def crawl_by_date(self, browser, date):
     title_popup_a = title_popup.find_element(by=By.TAG_NAME, value='a')
     title_popup_a.click()
     browser.switch_to.window(browser.window_handles[1])
-
     connect(browser, browser.current_url)
 
-    key = browser.current_url[-15:]
-    temp_row.insert(0, key)
-
-    detail_date_origin = browser.find_element(by=By.CLASS_NAME, value='ArticleMenuDate').text
-    temp_row.append(detail_date_origin)
-
-    detail_date = key[:10]
-    temp_row.append(detail_date)
-
+    key = ''
+    detail_date_origin = ''
+    detail_date = ''
     detail_title = ''
     detail_sub_title_pre = ''
     detail_sub_title_next = ''
     detail_content = ''
 
-    detail_content_list = browser.find_elements(by=By.CLASS_NAME, value='ArticleContent')
+    try:
+      key = browser.current_url[-15:]
+      detail_date_origin = browser.find_element(by=By.CLASS_NAME, value='ArticleMenuDate').text
+      detail_date = key[:10]
+      detail_content_list = browser.find_elements(by=By.CLASS_NAME, value='ArticleContent')
 
-    for detail_line in detail_content_list:
-      line_type = get_text_type(detail_line, detail_title, detail_content)
-      # print(line_type, detail_line.text)
-      if line_type == "TITLE":
-        detail_title += detail_line.text + '\r\n'
-      elif line_type == "PRE_TITLE":
-        detail_sub_title_pre += detail_line.text + '\r\n'  # 부제목(앞)
-      elif line_type == "POST_TITLE":
-        detail_sub_title_next += detail_line.text + '\r\n'  # 부제목(뒤)
-      elif line_type == "CONTENT" and line_writer not in detail_line.text: #마지막 작성자 제외
-        detail_content += detail_line.text + '\r\n'  # 본문 내용
+      for detail_line in detail_content_list:
+        line_type = get_text_type(detail_line, detail_title, detail_content)
+        # print(line_type, detail_line.text)
+        if line_type == "TITLE":
+          detail_title += detail_line.text + '\r\n'
+        elif line_type == "PRE_TITLE":
+          detail_sub_title_pre += detail_line.text + '\r\n'  # 부제목(앞)
+        elif line_type == "POST_TITLE":
+          detail_sub_title_next += detail_line.text + '\r\n'  # 부제목(뒤)
+        elif line_type == "CONTENT" and line_writer not in detail_line.text:  # 마지막 작성자 제외
+          detail_content += detail_line.text + '\r\n'  # 본문 내용
+    except Exception as e:
+      self.log_text_browser.append(line_no.replace('.','').strip() + "번째 기사 진행 중 오류 발생 PASS")
+      QApplication.processEvents()
 
-    temp_row.append(unicodedata.normalize('NFKC', detail_content.strip()))
-    temp_row.append(unicodedata.normalize('NFKC', detail_title.strip()))
-    temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_pre.strip()))
-    temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_next.strip()))
-    ws.append(temp_row)
-    wb.save(FILE_PATH+FILE_NAME)
+    finally:
+      temp_row.insert(0, key)
+      temp_row.append(detail_date_origin)
+      temp_row.append(detail_date)
+      temp_row.append(unicodedata.normalize('NFKC', detail_content.strip()))
+      temp_row.append(unicodedata.normalize('NFKC', detail_title.strip()))
+      temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_pre.strip()))
+      temp_row.append(unicodedata.normalize('NFKC', detail_sub_title_next.strip()))
+      ws.append(temp_row)
+      wb.save(FILE_PATH + FILE_NAME)
 
     # 팝업창 close 후 객체 전환
     browser.close()
