@@ -67,7 +67,7 @@ def get_url_type(input_url):
 # 루트에서 페이지 리스트 추출
 ############################################
 def get_page_list(browser, root_site_url):
-  try :
+  try:
     browser.get(root_site_url)
 
     wp_page = browser.find_element(by=By.ID, value='wp_page')
@@ -91,7 +91,7 @@ def get_ani_list(browser, page_site_url):
 
   try:
     browser.get(page_site_url)
-    ani_list = browser.find_elements(by=By.CLASS_NAME, value='item1')
+    ani_list = browser.find_elements(by=By.CLASS_NAME, value='myui-vodlist__detail')
     return ani_list
   except Exception as e:
     print('애니메이션 리스트 추출 시 오류가 발생했습니다')
@@ -105,7 +105,8 @@ def get_episode_list(browser, ani_site_url):
   try :
     browser.get(ani_site_url)
     eps = browser.find_elements(by=By.CLASS_NAME, value='ep')
-    title = browser.find_element(by=By.XPATH, value='//*[@id="body"]/div/div[1]/article/center/strong').text.replace(":", "-")
+    title = browser.find_element(by=By.TAG_NAME, value='article').find_element(by=By.TAG_NAME, value='strong').text.replace(":", "-")
+    # title = browser.find_element(by=By.XPATH, value='//*[@id="body"]/div/div[1]/article/center/strong').text.replace(":", "-")
     episode_list = [ep.get_attribute('href') for ep in eps]
     return title, episode_list
 
@@ -278,6 +279,7 @@ def download_page(browser, page_site_url):
     ani_list = get_ani_list(browser, page_site_url)
     ani_site_list = []
 
+    print("ani_list : ", ani_list)
     for ani_site_url_element in ani_list:
       ani_site_list.append(ani_site_url_element.find_element(by=By.TAG_NAME, value='a').get_attribute('href'))
 
@@ -311,6 +313,7 @@ if __name__ == '__main__':
         print("페이지에 존재하는 애니 리스트 전체 다운로드")
 
         page_list = get_page_list(browser, input_site_url)
+        print("page_list :", page_list)
         for page_url in page_list:
           download_page(browser, page_url)
       elif url_type == 'ANI':
