@@ -5,14 +5,12 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from seleniumwire import webdriver as wired_webdriver
 from selenium.webdriver.common.by import By
 import undetected_chromedriver as uc
 
 import urllib
 import atexit
 import youtube_dl
-import json
 
 # 결과물 파일 저장 경로
 TEMP_MOVIE_SAVE_PATH = './output/'
@@ -48,11 +46,11 @@ def get_browser():
 def get_url_type(input_url):
   try:
     if '/anime-list' in input_url \
-        or '/airing' in input_url \
-        or '/pv' in input_url \
-        or '/anime-list' in input_url \
-        or '/ani' in input_url \
-        or '/top16' in input_url:
+      or '/airing' in input_url \
+      or '/pv' in input_url \
+      or '/anime-list' in input_url \
+      or '/ani' in input_url \
+      or '/top16' in input_url:
       return 'PAGE'
     elif input_url.endswith('html'):
       return 'EP'
@@ -69,7 +67,6 @@ def get_url_type(input_url):
 def get_page_list(browser, root_site_url):
   try:
     browser.get(root_site_url)
-
     wp_page = browser.find_element(by=By.ID, value='wp_page')
     current = wp_page.find_element(by=By.CLASS_NAME, value='current').text
     pages = wp_page.find_elements(by=By.TAG_NAME, value='a')
@@ -97,15 +94,31 @@ def get_ani_list(browser, page_site_url):
     print('애니메이션 리스트 추출 시 오류가 발생했습니다')
     print(str(e)[:50])
 
+############################################
+# 파일 명으로 사용할 수 없는 특수 문자 치환
+############################################
+def replace_title(title):
+  title = title.replace("₩", "-")
+  title = title.replace("/", "-")
+  title = title.replace(":", "-")
+  title = title.replace("*", "-")
+  title = title.replace("?", "-")
+  title = title.replace("<", "-")
+  title = title.replace(">", "-")
+  title = title.replace("|", "-")
+  title = title.replace('"', '-')
+
+  return title
 
 ############################################
 # 애니에서 에피소드 리스트 추출
 ############################################
 def get_episode_list(browser, ani_site_url):
-  try :
+  try:
     browser.get(ani_site_url)
     eps = browser.find_elements(by=By.CLASS_NAME, value='ep')
-    title = browser.find_element(by=By.TAG_NAME, value='article').find_element(by=By.TAG_NAME, value='strong').text.replace(":", "-")
+    title = browser.find_element(by=By.TAG_NAME, value='article').find_element(by=By.TAG_NAME, value='strong').text
+    title = replace_title(title)
     # title = browser.find_element(by=By.XPATH, value='//*[@id="body"]/div/div[1]/article/center/strong').text.replace(":", "-")
     episode_list = [ep.get_attribute('href') for ep in eps]
     return title, episode_list
@@ -114,16 +127,12 @@ def get_episode_list(browser, ani_site_url):
     print('에피소드 리스트 추출 시 오류가 발생했습니다')
     print(str(e)[:50])
 
-def process_browser_log_entry(entry):
-    response = json.loads(entry['message'])['message']
-    return response
 
 ############################################
 # 영상 기본 정보 추출
 ############################################
 def get_movie_info(browser, ep_site_url):
-  try :
-
+  try:
     browser.get(ep_site_url)
     movie_title = browser.title
     movie_title = movie_title.replace(":", "-")
@@ -135,10 +144,14 @@ def get_movie_info(browser, ep_site_url):
     return movie_title, movie_id
 
   except Exception as e:
-    print('영상 기본 정보 추출 시 오류가 발생했습니다 : ', e)
+    print('영상 기본 정보 추출 시 오류가 발생 했습니다 : ', e)
 
+
+############################################
+# m3u8 형태 비디오 다운로드
+############################################
 def get_m3u8_url(browser, ep_site_url):
-  try :
+  try:
     browser.get(ep_site_url)
     option = browser.find_element(by=By.TAG_NAME, value='option')
     php_url = option.get_attribute('value')
@@ -156,17 +169,18 @@ def get_m3u8_url(browser, ep_site_url):
     return m3u8_url
 
   except Exception as e:
-    print('m3u8 주소 추출 중 오류가 발생했습니다.')
+    print('m3u8 주소 추출 중 오류가 발생 했습니다.')
     print(str(e)[:50])
+
 
 ############################################
 # 영상 추출
 ############################################
 def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
-  try :
+  try:
 
     print('#' * 100)
-    print("영상 다운로드가 시작되었습니다 : ", '{}.mp4'.format(movie_title))
+    print("영상 다운로드가 시작되었습니다 : ", f'{movie_title}.mp4')
     browser.get(ep_site_url)
 
     browser.switch_to.frame('videoarea')
@@ -176,7 +190,7 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     if video_url.startswith('blob'):
       m3u8_url = get_m3u8_url(browser, ep_site_url)
       youtube_dl.utils.std_headers['Referer'] = "https://kfani.me/"
-      ydl_opts = {'outtmpl': '{}.mp4'.format(MOVIE_SAVE_PATH + movie_title) }
+      ydl_opts = {'outtmpl': f'{MOVIE_SAVE_PATH + movie_title}.mp4' }
 
       with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         ydl.download([m3u8_url])
@@ -184,12 +198,12 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     else :
       retries = 3
       while(retries > 0 ):
-        try :
+        try:
           opener = urllib.request.build_opener()
           opener.addheaders = [('User-agent', 'Mozilla/5.0'), ("referer", "https://mobikf.ncctvgroup.com/")]
           urllib.request.install_opener(opener)
 
-          urllib.request.urlretrieve(video_url, '{}.mp4'.format(MOVIE_SAVE_PATH + movie_title))
+          urllib.request.urlretrieve(video_url, f'{MOVIE_SAVE_PATH + movie_title}.mp4')
           break
         except Exception as e:
           retries = retries - 1
@@ -204,12 +218,13 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     print(str(e)[:50])
     print('#' * 100)
 
+
 ############################################
 # 자막 다운로드
 ############################################
 def download_caption(movie_id, movie_title, MOVIE_SAVE_PATH):
   try :
-    url_caption = 'https://kfani.me/s/{}.vtt'.format(movie_id)
+    url_caption = f'https://kfani.me/s/{movie_id}.vtt'
 
     request_headers = {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36",
@@ -231,45 +246,6 @@ def download_caption(movie_id, movie_title, MOVIE_SAVE_PATH):
     print(str(e)[:50])
     print('#' * 100)
 
-############################################
-# 에피소드별 다운로드
-############################################
-def download_episode(browser, ep_site_url, MOVIE_SAVE_PATH):
-  try:
-    movie_title, movie_id = get_movie_info(browser, ep_site_url)
-
-    # 파일이 존재하지 않는 경우만 다운로드
-    if not os.path.exists(MOVIE_SAVE_PATH + '{}.mp4'.format(movie_title)):
-      download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH)
-      download_caption(movie_id, movie_title, MOVIE_SAVE_PATH)
-    else:
-      print('#' * 100)
-      print('영상이 존재하여 SKIP 합니다 : ', '{}.mp4'.format(movie_title))
-      print('#' * 100)
-
-  except Exception as e:
-    print('에피소드별 다운로드 중 오류가 발생했습니다.')
-    print(str(e)[:50])
-    print('#' * 100)
-
-############################################
-# 애니별 다운로드
-############################################
-def download_ani(browser, ani_site_url):
-  try:
-    title, episode_list = get_episode_list(browser, ani_site_url)
-    episode_list.reverse()
-    MOVIE_SAVE_PATH = TEMP_MOVIE_SAVE_PATH + title + '/'
-    if not os.path.exists(MOVIE_SAVE_PATH):
-      os.mkdir(MOVIE_SAVE_PATH)
-
-    for ep_site_url in episode_list:
-      download_episode(browser, ep_site_url, MOVIE_SAVE_PATH)
-
-  except Exception as e:
-    print('애니별 다운로드 중 오류가 발생했습니다.')
-    print(str(e)[:50])
-    print('#' * 100)
 
 ############################################
 # 페이지별 다운로드
@@ -292,12 +268,53 @@ def download_page(browser, page_site_url):
     print('#' * 100)
 
 
+############################################
+# 에피소드별 다운로드
+############################################
+def download_episode(browser, ep_site_url, MOVIE_SAVE_PATH):
+  try:
+    movie_title, movie_id = get_movie_info(browser, ep_site_url)
+
+    # 파일이 존재하지 않는 경우만 다운로드
+    if not os.path.exists(MOVIE_SAVE_PATH + '{}.mp4'.format(movie_title)):
+      download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH)
+      download_caption(movie_id, movie_title, MOVIE_SAVE_PATH)
+    else:
+      print('#' * 100)
+      print('영상이 존재하여 SKIP 합니다 : ', '{}.mp4'.format(movie_title))
+      print('#' * 100)
+
+  except Exception as e:
+    print('에피소드별 다운로드 중 오류가 발생했습니다.')
+    print(str(e)[:50])
+    print('#' * 100)
+
+
+############################################
+# 애니별 다운로드
+############################################
+def download_ani(browser, ani_site_url):
+  try:
+    title, episode_list = get_episode_list(browser, ani_site_url)
+    episode_list.reverse()
+    MOVIE_SAVE_PATH = TEMP_MOVIE_SAVE_PATH + title + '/'
+    if not os.path.exists(MOVIE_SAVE_PATH):
+      os.mkdir(MOVIE_SAVE_PATH)
+
+    for ep_site_url in episode_list:
+      download_episode(browser, ep_site_url, MOVIE_SAVE_PATH)
+
+  except Exception as e:
+    print('애니별 다운로드 중 오류가 발생했습니다.')
+    print(str(e)[:50])
+    print('#' * 100)
+
 
 def quit_brower():
   print("프로그램이 종료되었습니다.")
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
   atexit.register(quit_brower)
 
   while(True):
@@ -312,7 +329,7 @@ if __name__ == '__main__':
         print("페이지에 존재하는 애니 리스트 전체 다운로드")
 
         page_list = get_page_list(browser, input_site_url)
-        print("page_list :", page_list)
+        # print("page_list :", page_list)
         for page_url in page_list:
           download_page(browser, page_url)
       elif url_type == 'ANI':
