@@ -251,11 +251,10 @@ def download_caption(movie_id, movie_title, MOVIE_SAVE_PATH):
 # 페이지별 다운로드
 ############################################
 def download_page(browser, page_site_url):
-  try :
+  try:
     ani_list = get_ani_list(browser, page_site_url)
     ani_site_list = []
-
-    print("ani_list : ", ani_list)
+    # print("ani_list : ", ani_list)
     for ani_site_url_element in ani_list:
       ani_site_list.append(ani_site_url_element.find_element(by=By.TAG_NAME, value='a').get_attribute('href'))
 
@@ -318,7 +317,11 @@ if __name__ == '__main__':
   atexit.register(quit_brower)
 
   while(True):
-    input_site_url = input("영상을 추출할 URL을 입력해주세요 : ")
+    try:
+      input_site_url = input("영상을 추출할 URL을 입력해주세요 : ")
+    except EOFError:
+      break
+
     input_site_url = input_site_url.strip()
     url_type = get_url_type(input_site_url)
 
