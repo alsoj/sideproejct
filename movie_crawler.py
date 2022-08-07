@@ -61,7 +61,7 @@ def get_url_type(input_url):
 
   except Exception as e:
     print('입력된 URL의 유형을 파악하는 중 오류가 발생했습니다.')
-    print(e)
+    print(str(e)[:50])
 
 ############################################
 # 루트에서 페이지 리스트 추출
@@ -82,7 +82,7 @@ def get_page_list(browser, root_site_url):
 
   except Exception as e:
     print('페이지 리스트 추출 시 오류가 발생했습니다')
-    print(e)
+    print(str(e)[:50])
 
 ############################################
 # 페이지에서 애니메이션 리스트 추출
@@ -95,7 +95,7 @@ def get_ani_list(browser, page_site_url):
     return ani_list
   except Exception as e:
     print('애니메이션 리스트 추출 시 오류가 발생했습니다')
-    print(e)
+    print(str(e)[:50])
 
 
 ############################################
@@ -112,7 +112,7 @@ def get_episode_list(browser, ani_site_url):
 
   except Exception as e:
     print('에피소드 리스트 추출 시 오류가 발생했습니다')
-    print(e)
+    print(str(e)[:50])
 
 def process_browser_log_entry(entry):
     response = json.loads(entry['message'])['message']
@@ -157,7 +157,7 @@ def get_m3u8_url(browser, ep_site_url):
 
   except Exception as e:
     print('m3u8 주소 추출 중 오류가 발생했습니다.')
-    print(e)
+    print(str(e)[:50])
 
 ############################################
 # 영상 추출
@@ -194,14 +194,14 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
         except Exception as e:
           retries = retries - 1
           print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
-          print(e)
+          print(str(e)[:50])
           continue
 
     print("영상 다운로드 완료 : ", '{}.mp4'.format(movie_title))
 
   except Exception as e:
     print('영상 다운로드 시 오류가 발생했습니다 : ', '{}.mp4'.format(movie_title))
-    print(e)
+    print(str(e)[:50])
     print('#' * 100)
 
 ############################################
@@ -228,7 +228,7 @@ def download_caption(movie_id, movie_title, MOVIE_SAVE_PATH):
 
   except Exception as e:
     print('자막 다운로드 시 오류가 발생했습니다 : ', '{}.vtt'.format(movie_title))
-    print(e)
+    print(str(e)[:50])
     print('#' * 100)
 
 ############################################
@@ -249,7 +249,7 @@ def download_episode(browser, ep_site_url, MOVIE_SAVE_PATH):
 
   except Exception as e:
     print('에피소드별 다운로드 중 오류가 발생했습니다.')
-    print(e)
+    print(str(e)[:50])
     print('#' * 100)
 
 ############################################
@@ -268,7 +268,7 @@ def download_ani(browser, ani_site_url):
 
   except Exception as e:
     print('애니별 다운로드 중 오류가 발생했습니다.')
-    print(e)
+    print(str(e)[:50])
     print('#' * 100)
 
 ############################################
@@ -288,7 +288,7 @@ def download_page(browser, page_site_url):
 
   except Exception as e:
     print('페이지별 다운로드 중 오류가 발생했습니다.')
-    print(e)
+    print(str(e)[:50])
     print('#' * 100)
 
 
@@ -308,7 +308,6 @@ if __name__ == '__main__':
     browser = get_browser()
 
     try:
-
       if url_type == 'PAGE':
         print("페이지에 존재하는 애니 리스트 전체 다운로드")
 
@@ -322,7 +321,7 @@ if __name__ == '__main__':
 
     except Exception as e:
       print('작업 중 오류가 발생했습니다.')
-      print(e)
+      print(str(e)[:50])
 
     finally:
       browser.quit()
