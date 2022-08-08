@@ -8,6 +8,9 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
+import requests
+from bs4 import BeautifulSoup
+
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image
 
@@ -87,19 +90,21 @@ class AdCrawler_Window(QMainWindow, form_class):
     print(f"MEDIA_NAME : {MEDIA_NAME}")
     print(f"FILE_NAME : {FILE_NAME}")
 
-    # 크롤링 진행
-    crawl_ad(browser)
-    rownum = 1
-    for ad_info in AD_INFO_LIST:
-      landing_info = get_landing_info(browser, ad_info)
-      if is_not_dup(landing_info['url']):
-        excel_input = get_excel_input(ad_info, landing_info, repeat_cnt)
-        rownum += 1
-        write_excel(excel_input, rownum)
-    # for i in range(1, repeat_cnt+1):
-    #   sleep(1)
-    #   self.progress_bar.setValue(i)
-    #   QApplication.processEvents()
+    for i in range(1, repeat_cnt+1):
+      set_crawl_init() # 크롤링 정보 초기화
+      crawl_ad(browser) # 크롤링 진행
+      for ad_info in AD_INFO_LIST:
+        is_exist = check_update_excel(ad_info['url'])
+
+        if is_exist is False:
+          landing_info = get_landing_info(browser, ad_info)
+          if is_not_dup(landing_info['url']):
+            excel_input = get_excel_input(ad_info, landing_info, repeat_cnt)
+            insert_excel(excel_input)
+
+      self.set_log_text(f"{i}회 진행 완료")
+      self.progress_bar.setValue(i)
+      QApplication.processEvents()
 
 
 # 크롬 브라우저 로드
@@ -107,8 +112,7 @@ def get_browser(self, device):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  # 임시 주석 처리
-  # options.add_argument("headless")
+  options.add_argument("headless")
 
   if device == 'mobile':
     mobile_emulation = {"deviceName": "iPhone X"}
@@ -137,6 +141,8 @@ def set_global_variables(browser):
   MEDIA_NAME = get_media_name(browser)
   global FILE_NAME
   FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}" + FILE_SUFFIX
+
+def set_crawl_init():
   global AD_INFO_LIST
   AD_INFO_LIST = []
   global AD_INFO_SET
@@ -153,13 +159,32 @@ def create_excel():
   for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
     ws.cell(row=1, column=j).value = kwd
 
+  ws.column_dimensions['C'].width = 50
+  ws.column_dimensions['D'].width = 20
+  ws.column_dimensions['G'].width = 20
+  ws.column_dimensions['H'].width = 50
+  ws.column_dimensions['I'].width = 50
+
   wb.save(FILE_PATH + FILE_NAME)
 
-# 엑셀 파일 기록
-def write_excel(excel_input, rownum):
+# 엑셀 파일 광고 존재 여부 확인 후 업데이트
+def check_update_excel(ad_url):
   wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
   ws = wb.active
 
+  for index, row in enumerate(ws.rows, start=1):
+    if ad_url == row[7].value:
+      ws.cell(row=index, column=6).value = row[5].value + 1
+      wb.save(FILE_PATH + FILE_NAME)
+      return True
+  return False
+
+# 엑셀 파일 insert (존재 하지 않는 경우)
+def insert_excel(excel_input):
+  wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
+  ws = wb.active
+
+  rownum = ws.max_row+1
   ws.row_dimensions[rownum].height = 70
   ws['A'+str(rownum)] = excel_input['media']
   ws['B'+str(rownum)] = excel_input['device']
@@ -251,11 +276,15 @@ def get_landing_info(browser, ad_info):
   landing_url = ''
 
   try:
-    browser.switch_to.new_window('tab')
-    browser.get(ad_info['url'])
-    landing_title = browser.title
-    landing_url = browser.current_url
-    close_new_tabs(browser)
+    res = requests.get(ad_info['url'])
+    soup = BeautifulSoup(res.content, "html.parser")
+    landing_title = soup.find("title").get_text()
+    landing_url = res.url
+    # browser.switch_to.new_window('tab')
+    # browser.get(ad_info['url'])
+    # landing_title = browser.title
+    # landing_url = browser.current_url
+    # close_new_tabs(browser)
 
   except Exception as e:
     pass
