@@ -184,6 +184,9 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     browser.get(ep_site_url)
 
     browser.switch_to.frame('videoarea')
+    iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
+    if len(iframes) > 0:
+      browser.switch_to.frame(0)
     video = browser.find_element(by=By.TAG_NAME, value='video')
     video_url = video.get_attribute("src")
 
@@ -319,15 +322,24 @@ if __name__ == '__main__':
   while(True):
     try:
       input_site_url = input("영상을 추출할 URL을 입력해주세요 : ")
-    except EOFError:
+      # print("입력된 사이트 :", input_site_url)
+      input_site_url = input_site_url.strip()
+      url_type = get_url_type(input_site_url)
+      # print("url_type :", url_type)
+
+      browser = get_browser()
+      # print("브라우저 로드 완료")
+
+    except EOFError as e:
+      print(e)
+      break
+    except Exception as e:
+      print(e)
       break
 
-    input_site_url = input_site_url.strip()
-    url_type = get_url_type(input_site_url)
-
-    browser = get_browser()
-
     try:
+      # print("크롤링 시작")
+
       if url_type == 'PAGE':
         print("페이지에 존재하는 애니 리스트 전체 다운로드")
 
