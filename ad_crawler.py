@@ -70,25 +70,24 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     repeat_cnt = self.spin_cnt.value()
     target_url = self.edit_url.text()
+    device_type = "P" if self.radio_pc.isChecked() else "M"
 
     self.progress_bar.setMaximum(repeat_cnt)
     self.set_log_text("#######################################")
     self.set_log_text(f"크롤링 작업 시작(반복횟수 : {repeat_cnt}회)")
     self.set_log_text("#######################################")
 
-    browser = get_browser(self, 'PC')
+    browser = get_browser(self, device_type)
     browser.get(target_url)
 
-
     # 전역 변수 세팅 및 초기화
-    set_global_variables(browser)
+    set_global_variables(browser, device_type)
 
     # 엑셀 파일 생성
     create_excel()
 
-    print(f"ROOT_URL : {ROOT_URL}")
-    print(f"MEDIA_NAME : {MEDIA_NAME}")
-    print(f"FILE_NAME : {FILE_NAME}")
+    self.set_log_text(f"매체명 : {MEDIA_NAME}")
+    self.set_log_text(f"파일명 : {FILE_NAME}")
 
     for i in range(1, repeat_cnt+1):
       set_crawl_init() # 크롤링 정보 초기화
@@ -114,7 +113,7 @@ def get_browser(self, device):
   options = webdriver.ChromeOptions()
   options.add_argument("headless")
 
-  if device == 'mobile':
+  if device == 'M':
     mobile_emulation = {"deviceName": "iPhone X"}
     options.add_experimental_option("mobileEmulation", mobile_emulation)
 
@@ -134,13 +133,19 @@ def close_new_tabs(browser):
   browser.switch_to.window(tabs[0])
 
 # 전역변수 세팅 및 초기화
-def set_global_variables(browser):
+def set_global_variables(browser, device):
   global ROOT_URL
   ROOT_URL = get_root_url(browser)
   global MEDIA_NAME
   MEDIA_NAME = get_media_name(browser)
+
+  if device == "P":
+    device_type = "PC"
+  else:
+    device_type = "MOBILE"
+
   global FILE_NAME
-  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}" + FILE_SUFFIX
+  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}_{device_type}" + FILE_SUFFIX
 
 def set_crawl_init():
   global AD_INFO_LIST
@@ -276,15 +281,15 @@ def get_landing_info(browser, ad_info):
   landing_url = ''
 
   try:
-    res = requests.get(ad_info['url'])
-    soup = BeautifulSoup(res.content, "html.parser")
-    landing_title = soup.find("title").get_text()
-    landing_url = res.url
-    # browser.switch_to.new_window('tab')
-    # browser.get(ad_info['url'])
-    # landing_title = browser.title
-    # landing_url = browser.current_url
-    # close_new_tabs(browser)
+    # res = requests.get(ad_info['url'])
+    # soup = BeautifulSoup(res.content, "html.parser")
+    # landing_title = soup.find("title").get_text()
+    # landing_url = res.url
+    browser.switch_to.new_window('tab')
+    browser.get(ad_info['url'])
+    landing_title = browser.title
+    landing_url = browser.current_url
+    close_new_tabs(browser)
 
   except Exception as e:
     pass
