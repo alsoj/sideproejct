@@ -91,6 +91,7 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     for i in range(1, repeat_cnt+1):
       set_crawl_init() # 크롤링 정보 초기화
+      browser.get(target_url)
       crawl_ad(browser) # 크롤링 진행
       for ad_info in AD_INFO_LIST:
         is_exist = check_update_excel(ad_info['url'])
@@ -105,6 +106,7 @@ class AdCrawler_Window(QMainWindow, form_class):
       self.progress_bar.setValue(i)
       QApplication.processEvents()
 
+    browser.quit()
 
 # 크롬 브라우저 로드
 def get_browser(self, device):
