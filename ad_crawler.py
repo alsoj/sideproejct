@@ -105,23 +105,26 @@ class AdCrawler_Window(QMainWindow, form_class):
     self.set_log_text(f"파일명 : {FILE_NAME}")
 
     for i in range(1, repeat_cnt+1):
-      set_crawl_init() # 크롤링 정보 초기화
-      browser.get(target_url)
-      crawl_ad(browser) # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
+      try:
+        set_crawl_init()  # 크롤링 정보 초기화
+        browser.get(target_url)
+        crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
-      for ad_info in AD_INFO_LIST:
-        if ad_info['url'] in AD_CLASS_DICT: # 광고 url를 key로 해서 관리
-          # 이미 존재하는 url이라면 cnt +1
-          AD_CLASS_DICT[ad_info['url']].add_cnt()
-        else:
-          # 새로운 url이라면 landing 정보 추가해서 생성
-          landing_info = get_landing_info(browser, ad_info)
-          if is_not_dup(landing_info['url']):
-            AD_CLASS_DICT[ad_info['url']] = Ad(MEDIA_NAME, DEVICE, get_image(ad_info['image']), ad_info['text'], repeat_cnt, 1, landing_info['title'], ad_info['url'], landing_info['url'])
-
-      self.set_log_text(f"{i}회 진행 완료")
-      self.progress_bar.setValue(i)
-      QApplication.processEvents()
+        for ad_info in AD_INFO_LIST:
+          if ad_info['url'] in AD_CLASS_DICT:  # 광고 url를 key로 해서 관리
+            # 이미 존재하는 url이라면 cnt +1
+            AD_CLASS_DICT[ad_info['url']].add_cnt()
+          else:
+            # 새로운 url이라면 landing 정보 추가해서 생성
+            landing_info = get_landing_info(browser, ad_info)
+            if is_not_dup(landing_info['url']):
+              AD_CLASS_DICT[ad_info['url']] = Ad(MEDIA_NAME, DEVICE, get_image(ad_info['image']), ad_info['text'], repeat_cnt, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+      except Exception as e:
+        pass
+      finally:
+        self.set_log_text(f"{i}회 진행 완료")
+        self.progress_bar.setValue(i)
+        QApplication.processEvents()
 
     save_excel()
     browser.quit()
@@ -134,7 +137,7 @@ def get_browser(self):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  # options.add_argument("headless")
+  options.add_argument("headless")
 
   if DEVICE == 'MOBILE':
     mobile_emulation = {"deviceName": "iPhone X"}
@@ -295,7 +298,7 @@ def isAd(href):
     return True
 
 # 광고 정보 추출(from a 태그)
-def get_a_info(a_tag):
+def get_ad_info(a_tag):
   ad_info = {}
   text = ''
   image = ''
@@ -369,7 +372,7 @@ def crawl_ad(browser):
 
     for a_tag in a_tags:
       if isAd(a_tag.get_attribute('href')):
-        ad_info = get_a_info(a_tag)
+        ad_info = get_ad_info(a_tag)
         set_ad_info(ad_info)
 
     # 하위 iframe 조회 및 step into
@@ -388,10 +391,10 @@ def crawl_ad(browser):
 
 # ad info 세팅
 def set_ad_info(ad_info):
+  global AD_INFO_SET
   if (len(ad_info['text']) > 0 or len(ad_info['image']) > 0) and ad_info['url'] not in AD_INFO_SET:
     global AD_INFO_LIST
     AD_INFO_LIST.append(ad_info)
-    global AD_INFO_SET
     AD_INFO_SET.add(ad_info['url'])
 
 # 엑셀 입력 값 세팅
