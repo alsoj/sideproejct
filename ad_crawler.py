@@ -8,9 +8,6 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-import requests
-from bs4 import BeautifulSoup
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image
 
@@ -30,8 +27,25 @@ FILE_NAME = ''
 ROOT_URL = ''
 MEDIA_NAME = ''
 AD_INFO_LIST = []
+AD_CLASS_DICT = {}
 AD_INFO_SET = set()
 LANDING_INFO_SET = set()
+DEVICE = ''
+
+class Ad:
+  def __init__(self, media, device, thumb, text, repeat_cnt, ad_cnt, landing_title, ad_url, landing_url):
+    self.media = media
+    self.device = device
+    self.thumb = thumb
+    self.text = text
+    self.repeat_cnt = repeat_cnt
+    self.ad_cnt = ad_cnt
+    self.landing_title = landing_title
+    self.ad_url = ad_url
+    self.landing_url = landing_url
+
+  def add_cnt(self):
+    self.ad_cnt += 1
 
 form_class = uic.loadUiType("ad_crawler.ui")[0]
 
@@ -70,18 +84,19 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     repeat_cnt = self.spin_cnt.value()
     target_url = self.edit_url.text()
-    device_type = "P" if self.radio_pc.isChecked() else "M"
+    global DEVICE
+    DEVICE = "PC" if self.radio_pc.isChecked() else "MOBILE"
 
     self.progress_bar.setMaximum(repeat_cnt)
     self.set_log_text("#######################################")
     self.set_log_text(f"크롤링 작업 시작(반복횟수 : {repeat_cnt}회)")
     self.set_log_text("#######################################")
 
-    browser = get_browser(self, device_type)
+    browser = get_browser(self)
     browser.get(target_url)
 
     # 전역 변수 세팅 및 초기화
-    set_global_variables(browser, device_type)
+    set_global_variables(browser)
 
     # 엑셀 파일 생성
     create_excel()
@@ -92,30 +107,36 @@ class AdCrawler_Window(QMainWindow, form_class):
     for i in range(1, repeat_cnt+1):
       set_crawl_init() # 크롤링 정보 초기화
       browser.get(target_url)
-      crawl_ad(browser) # 크롤링 진행
-      for ad_info in AD_INFO_LIST:
-        is_exist = check_update_excel(ad_info['url'])
+      crawl_ad(browser) # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
-        if is_exist is False:
+      for ad_info in AD_INFO_LIST:
+        if ad_info['url'] in AD_CLASS_DICT: # 광고 url를 key로 해서 관리
+          # 이미 존재하는 url이라면 cnt +1
+          AD_CLASS_DICT[ad_info['url']].add_cnt()
+        else:
+          # 새로운 url이라면 landing 정보 추가해서 생성
           landing_info = get_landing_info(browser, ad_info)
           if is_not_dup(landing_info['url']):
-            excel_input = get_excel_input(ad_info, landing_info, repeat_cnt)
-            insert_excel(excel_input)
+            AD_CLASS_DICT[ad_info['url']] = Ad(MEDIA_NAME, DEVICE, get_image(ad_info['image']), ad_info['text'], repeat_cnt, 1, landing_info['title'], ad_info['url'], landing_info['url'])
 
       self.set_log_text(f"{i}회 진행 완료")
       self.progress_bar.setValue(i)
       QApplication.processEvents()
 
+    save_excel()
     browser.quit()
+    self.set_log_text("#######################################")
+    self.set_log_text("크롤링 작업 완료")
+    self.set_log_text("#######################################")
 
 # 크롬 브라우저 로드
-def get_browser(self, device):
+def get_browser(self):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  options.add_argument("headless")
+  # options.add_argument("headless")
 
-  if device == 'M':
+  if DEVICE == 'MOBILE':
     mobile_emulation = {"deviceName": "iPhone X"}
     options.add_experimental_option("mobileEmulation", mobile_emulation)
 
@@ -135,19 +156,13 @@ def close_new_tabs(browser):
   browser.switch_to.window(tabs[0])
 
 # 전역변수 세팅 및 초기화
-def set_global_variables(browser, device):
+def set_global_variables(browser):
   global ROOT_URL
   ROOT_URL = get_root_url(browser)
   global MEDIA_NAME
   MEDIA_NAME = get_media_name(browser)
-
-  if device == "P":
-    device_type = "PC"
-  else:
-    device_type = "MOBILE"
-
   global FILE_NAME
-  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}_{device_type}" + FILE_SUFFIX
+  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}_{DEVICE}" + FILE_SUFFIX
 
 def set_crawl_init():
   global AD_INFO_LIST
@@ -185,6 +200,32 @@ def check_update_excel(ad_url):
       wb.save(FILE_PATH + FILE_NAME)
       return True
   return False
+
+# 엑셀 파일 저장(마지막에 한 번에)
+def save_excel():
+  wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
+  ws = wb.active
+  rownum = ws.max_row + 1
+
+  for url, ad_class in AD_CLASS_DICT.items():
+    ws.row_dimensions[rownum].height = 70
+    ws['A'+str(rownum)] = ad_class.media
+    ws['B'+str(rownum)] = ad_class.device
+    image = ad_class.thumb
+    if type(image) != str:
+      image.height = 85
+      ws.add_image(image, 'C'+str(rownum))
+    else:
+      ws['C'+str(rownum)] = image
+    ws['D'+str(rownum)] = ad_class.text
+    ws['E'+str(rownum)] = ad_class.repeat_cnt
+    ws['F'+str(rownum)] = ad_class.ad_cnt
+    ws['G'+str(rownum)] = ad_class.landing_title
+    ws['H'+str(rownum)] = ad_class.ad_url
+    ws['I'+str(rownum)] = ad_class.landing_url
+    rownum += 1
+
+  wb.save(FILE_PATH + FILE_NAME)
 
 # 엑셀 파일 insert (존재 하지 않는 경우)
 def insert_excel(excel_input):
@@ -287,11 +328,12 @@ def get_landing_info(browser, ad_info):
     # soup = BeautifulSoup(res.content, "html.parser")
     # landing_title = soup.find("title").get_text()
     # landing_url = res.url
+
+    browser.set_page_load_timeout(2)
     browser.switch_to.new_window('tab')
     browser.get(ad_info['url'])
     landing_title = browser.title
     landing_url = browser.current_url
-    close_new_tabs(browser)
 
   except Exception as e:
     pass
@@ -299,6 +341,7 @@ def get_landing_info(browser, ad_info):
   finally:
     landing_info['title'] = landing_title
     landing_info['url'] = landing_url
+    close_new_tabs(browser)
 
   return landing_info
 
@@ -345,10 +388,10 @@ def crawl_ad(browser):
 
 # ad info 세팅
 def set_ad_info(ad_info):
-  global AD_INFO_SET
   if (len(ad_info['text']) > 0 or len(ad_info['image']) > 0) and ad_info['url'] not in AD_INFO_SET:
     global AD_INFO_LIST
     AD_INFO_LIST.append(ad_info)
+    global AD_INFO_SET
     AD_INFO_SET.add(ad_info['url'])
 
 # 엑셀 입력 값 세팅
