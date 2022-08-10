@@ -108,6 +108,7 @@ class AdCrawler_Window(QMainWindow, form_class):
       try:
         set_crawl_init()  # 크롤링 정보 초기화
         browser.get(target_url)
+        browser_scroll_down(browser)  # 브라우저 스크롤 다운
         crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
         for ad_info in AD_INFO_LIST:
@@ -137,7 +138,7 @@ def get_browser(self):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  options.add_argument("headless")
+  # options.add_argument("headless")
 
   if DEVICE == 'MOBILE':
     mobile_emulation = {"deviceName": "iPhone X"}
@@ -148,6 +149,16 @@ def get_browser(self):
 
   self.set_log_text("크롬 브라우저 로딩 완료 되었습니다.")
   return browser
+
+def browser_scroll_down(browser):
+  scroll_from = 0
+  scroll_to = 200
+  scroll_height = browser.execute_script("return document.body.scrollHeight")
+  while (scroll_to < scroll_height):
+    browser.execute_script(f"window.scrollTo({scroll_from},{scroll_to})")
+    scroll_height = browser.execute_script("return document.body.scrollHeight")
+    scroll_from += 200
+    scroll_to += 200
 
 # 브라우저 Tab close
 def close_new_tabs(browser):
@@ -217,6 +228,7 @@ def save_excel():
     image = ad_class.thumb
     if type(image) != str:
       image.height = 85
+      image.width = 40
       ws.add_image(image, 'C'+str(rownum))
     else:
       ws['C'+str(rownum)] = image

@@ -41,7 +41,13 @@ class MallCrawler(QMainWindow, form_class):
     self.btn_file.clicked.connect(self.btn_file_clicked)
 
   def btn_file_clicked(self):
-    file_name = QFileDialog.getOpenFileName(self, '파일 선택', './', 'Excel(*.xlsx)')[0]
+    file_name = QFileDialog.getOpenFileName(self, '파일 선택', './', 'Excel(*.xlsx)')
+
+    if file_name[0]:  # 파일 선택
+      file_name = file_name[0]
+    else:  # 파일 미선택
+      return False
+
     self.edit_file.setText(file_name)
 
     global INPUT_FULL_FILE_NAME
@@ -53,11 +59,14 @@ class MallCrawler(QMainWindow, form_class):
 
   def btn_start_clicked(self):
     self.log_text_browser.clear()
+    self.btn_start.setEnabled(False)
+    QApplication.processEvents()
 
     global KEYWORD_LIST
     global KEYWORD
     KEYWORD = self.edit_keyword.text().strip()
     if len(KEYWORD) + len(KEYWORD_LIST) == 0:
+      self.btn_start.setEnabled(True)
       self.log_text_browser.append("파일 선택 또는 키워드를 입력 해주세요.")
       QApplication.processEvents()
       return False
@@ -77,6 +86,7 @@ class MallCrawler(QMainWindow, form_class):
       options = webdriver.ChromeOptions()
       options.add_argument("headless")
       browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+      browser.set_page_load_timeout(10)
 
       self.progress_bar.setMaximum(len(KEYWORD_LIST))
       i = 0
@@ -111,6 +121,7 @@ class MallCrawler(QMainWindow, form_class):
 
     finally:
       browser.quit()
+      self.btn_start.setEnabled(True)
       self.log_text_browser.append("#############################################")
       self.log_text_browser.append("작업이 종료 되었습니다.")
       self.log_text_browser.append("#############################################")
@@ -158,9 +169,13 @@ def go_mall_in_page(self, browser, KEYWORD):
   mall_thumb_list = browser.find_elements(by=By.CLASS_NAME, value='ad_thumb')
 
   for mall_thumb in mall_thumb_list:
-    mall_thumb.click()
-    sleep(3)
-    get_mall_info(self, browser, KEYWORD)
+    try:
+      mall_thumb.click()
+      sleep(3)
+      get_mall_info(self, browser, KEYWORD)
+    except Exception as e:
+      close_new_tabs(browser)
+      pass
 
 ####################################
 # 다음 페이지로 이동
@@ -235,7 +250,7 @@ def get_ceo_name(source):
 
   rtn_ceo = ''
   for text in ceo.split(' '):
-    if len(text.strip()) > 0 :
+    if len(text.strip()) > 0:
       rtn_ceo += text + ' '
 
   return rtn_ceo.strip()
@@ -286,25 +301,25 @@ def get_mall_info(self, browser, KEYWORD):
 
   if '카페24' in source or 'cafe24' in source:
     self.log_text_browser.append("카페24 호스팅 업체 PASS : " + cur_url.split('/')[2])
-    self.log_text_browser.append("===================================================================")
+    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
     # print('카페24 호스팅 업체 PASS : ', cur_url.split('/')[2])
     # print("===================================================================")
   elif 'smartstore' in cur_url:
     self.log_text_browser.append("스마트스토어 업체 PASS : " + cur_url.split('/')[2] + "/" + cur_url.split('/')[3].split('?')[0])
-    self.log_text_browser.append("===================================================================")
+    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
     # print('스마트스토어 업체 PASS : ', cur_url.split('/')[2] + "/" + cur_url.split('/')[3].split('?')[0])
     # print("===================================================================")
   elif 'makeshop' in source:
     self.log_text_browser.append("메이크샵 호스팅 업체 PASS : " + cur_url.split('/')[2])
-    self.log_text_browser.append("===================================================================")
+    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
     # print('메이크샵 호스팅 업체 PASS : ', cur_url.split('/')[2])
     # print("===================================================================")
   elif 'musinsa' in cur_url or 'lfmall' in cur_url or 'lotteon' in cur_url or 'danawa' in cur_url or 'navaer' in cur_url or 'blog' in cur_url or 'ssg' in cur_url:
     self.log_text_browser.append("비대상 업체 PASS : " + cur_url.split('/')[2])
-    self.log_text_browser.append("===================================================================")
+    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
   else:
     title = browser.title
@@ -324,12 +339,12 @@ def get_mall_info(self, browser, KEYWORD):
 
     # sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
     temp_row = [KEYWORD, title, site_url, ceo, email, tel]
-    print("대상 사이트 추출 : ", title)
+    # print("대상 사이트 추출 : ", title)
     # print("사이트 url : ", site_url)
     # print("대표 : ", ceo)
     # print("이메일 주소 : ", email)
     # print("전화번호 : ", tel)
-    print("===================================================================")
+    # print("===================================================================")
 
     ws.append(temp_row)
     wb.save(FILE_PATH+FILE_NAME)
