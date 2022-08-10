@@ -18,8 +18,12 @@ FILE_PATH = './output/'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
+INPUT_FULL_FILE_NAME = ''
+INPUT_FILE_NAME = ''
+
 # 전역변수 - 키워드
 KEYWORD = ''
+KEYWORD_LIST = []
 PAGE = 1
 
 # 전역젼수
@@ -34,40 +38,70 @@ class MallCrawler(QMainWindow, form_class):
     self.setupUi(self)
 
     self.btn_start.clicked.connect(self.btn_start_clicked)
+    self.btn_file.clicked.connect(self.btn_file_clicked)
+
+  def btn_file_clicked(self):
+    file_name = QFileDialog.getOpenFileName(self, '파일 선택', './', 'Excel(*.xlsx)')[0]
+    self.edit_file.setText(file_name)
+
+    global INPUT_FULL_FILE_NAME
+    INPUT_FULL_FILE_NAME = file_name
+    global INPUT_FILE_NAME
+    INPUT_FILE_NAME = file_name.split("/")[-1].replace(".xlsx", "")
+    global KEYWORD_LIST
+    KEYWORD_LIST = get_keyword_list(file_name)
 
   def btn_start_clicked(self):
+    self.log_text_browser.clear()
 
+    global KEYWORD_LIST
     global KEYWORD
     KEYWORD = self.edit_keyword.text().strip()
-    browser = ''
+    if len(KEYWORD) + len(KEYWORD_LIST) == 0:
+      self.log_text_browser.append("파일 선택 또는 키워드를 입력 해주세요.")
+      QApplication.processEvents()
+      return False
 
-    self.log_text_browser.clear()
-    self.log_text_browser.append("#############################################")
-    self.log_text_browser.append("크롤링 작업 시작, 키워드 : " + KEYWORD)
-    self.log_text_browser.append("#############################################")
-    QApplication.processEvents()
+    # 파일 입력을 우선해서 설정
+    if len(KEYWORD_LIST) > 0:
+      crawl_type = 'FILE'
+    else:
+      crawl_type = 'TEXT'
+      KEYWORD_LIST.append(KEYWORD)
+
+    # 엑셀 파일 생성
+    create_excel(crawl_type)
 
     try:
-      # 파일 생성
-      global FILE_NAME
-      FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '_' + KEYWORD + FILE_SUFFIX
-      create_excel()
-
       # 백그라운드 실행
       options = webdriver.ChromeOptions()
       options.add_argument("headless")
       browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-      # print(SEARCH_URL.format(KEYWORD, PAGE))
-      global PAGE
-      PAGE = 1
+      self.progress_bar.setMaximum(len(KEYWORD_LIST))
+      i = 0
 
-      browser.get(SEARCH_URL.format(KEYWORD, PAGE))
-      progress = 'start'
+      for KEYWORD in KEYWORD_LIST:
+        self.log_text_browser.append("#############################################")
+        self.log_text_browser.append("크롤링 작업 시작, 키워드 : " + KEYWORD)
+        QApplication.processEvents()
 
-      while (progress != 'end'):
-        go_mall_in_page(browser, self)  # 쇼핑몰로 이동
-        progress = go_to_next(browser)  # 다음페이지로 이동
+        # print(SEARCH_URL.format(KEYWORD, PAGE))
+        global PAGE
+        PAGE = 1
+
+        browser.get(SEARCH_URL.format(KEYWORD, PAGE))
+        progress = 'start'
+
+        while (progress != 'end'):
+          go_mall_in_page(self, browser, KEYWORD)  # 쇼핑몰로 이동
+          progress = go_to_next(browser, KEYWORD)  # 다음페이지로 이동
+
+        self.log_text_browser.append("크롤링 작업 종료, 키워드 : " + KEYWORD)
+        self.log_text_browser.append("#############################################")
+        i += 1
+        self.progress_bar.setValue(i)
+        QApplication.processEvents()
 
     except Exception as e:
       self.log_text_browser.append("#############################################")
@@ -83,37 +117,55 @@ class MallCrawler(QMainWindow, form_class):
       QApplication.processEvents()
 
 
+def get_keyword_list(file_name):
+  wb = load_workbook(file_name, data_only=True)
+  ws = wb.active
+
+  keyword_list = []
+
+  for row in ws.rows:
+    keyword_list.append(row[0].value)
+
+  return keyword_list
+
 ####################################################
 # 엑셀 파일 생성
 ####################################################
-def create_excel():
-    # 엑셀 생성
-    wb = Workbook()
-    ws = wb.active
+def create_excel(crawl_type):
+  # 파일 생성
+  global FILE_NAME
+  if crawl_type == 'FILE':
+    FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '_' + INPUT_FILE_NAME + FILE_SUFFIX
+  elif crawl_type == 'TEXT':
+    FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '_' + KEYWORD + FILE_SUFFIX
 
-    # 제목 적기
-    sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
-    for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
-      ws.cell(row=1, column=j).value = kwd
+  # 엑셀 생성
+  wb = Workbook()
+  ws = wb.active
 
-    wb.save(FILE_PATH+FILE_NAME)
+  # 제목 적기
+  sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
+  for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
+    ws.cell(row=1, column=j).value = kwd
+
+  wb.save(FILE_PATH+FILE_NAME)
 
 ####################################
 # 해당 페이지 내에 존재하는 쇼핑몰 이동
 ####################################
-def go_mall_in_page(browser, self):
+def go_mall_in_page(self, browser, KEYWORD):
   # 썸네일 이미지가 있는 건들만 List로 추출(썸네일 없는 건은 광고)
   mall_thumb_list = browser.find_elements(by=By.CLASS_NAME, value='ad_thumb')
 
   for mall_thumb in mall_thumb_list:
     mall_thumb.click()
     sleep(3)
-    get_mall_info(browser, self)
+    get_mall_info(self, browser, KEYWORD)
 
 ####################################
 # 다음 페이지로 이동
 ####################################
-def go_to_next(browser):
+def go_to_next(browser, KEYWORD):
 
   global PAGE
   PAGE += 1
@@ -121,7 +173,7 @@ def go_to_next(browser):
 
   if '검색결과가 없습니다' in browser.page_source :
     return 'end'
-  else :
+  else:
     return 'move'
 
     # next_button = browser.find_elements(by=By.CLASS_NAME, value='next')
@@ -226,7 +278,7 @@ def get_tel(source):
 ####################################
 # mall 정보 조회
 ####################################
-def get_mall_info(browser, self):
+def get_mall_info(self, browser, KEYWORD):
   browser.switch_to.window(window_name=browser.window_handles[-1])
 
   source = browser.page_source
@@ -297,6 +349,6 @@ def close_new_tabs(browser):
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)
-  myWindow = MallCrawler()
-  myWindow.show()
-  app.exec_()
+  mallCrawler = MallCrawler()
+  mallCrawler.show()
+  app.exec()
