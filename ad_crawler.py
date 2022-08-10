@@ -89,7 +89,7 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     self.progress_bar.setMaximum(repeat_cnt)
     self.set_log_text("#######################################")
-    self.set_log_text(f"크롤링 작업 시작(반복횟수 : {repeat_cnt}회)")
+    self.set_log_text(f"크롤링 작업 시작(반복횟수 : {repeat_cnt}회)_" + datetime.datetime.now().strftime("%Y%m%d%H%M"))
     self.set_log_text("#######################################")
 
     browser = get_browser(self)
@@ -129,7 +129,7 @@ class AdCrawler_Window(QMainWindow, form_class):
     save_excel()
     browser.quit()
     self.set_log_text("#######################################")
-    self.set_log_text("크롤링 작업 완료")
+    self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y%m%d%H%M"))
     self.set_log_text("#######################################")
 
 # 크롬 브라우저 로드
