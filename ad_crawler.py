@@ -27,8 +27,25 @@ FILE_NAME = ''
 ROOT_URL = ''
 MEDIA_NAME = ''
 AD_INFO_LIST = []
+AD_CLASS_DICT = {}
 AD_INFO_SET = set()
 LANDING_INFO_SET = set()
+DEVICE = ''
+
+class Ad:
+  def __init__(self, media, device, thumb, text, repeat_cnt, ad_cnt, landing_title, ad_url, landing_url):
+    self.media = media
+    self.device = device
+    self.thumb = thumb
+    self.text = text
+    self.repeat_cnt = repeat_cnt
+    self.ad_cnt = ad_cnt
+    self.landing_title = landing_title
+    self.ad_url = ad_url
+    self.landing_url = landing_url
+
+  def add_cnt(self):
+    self.ad_cnt += 1
 
 form_class = uic.loadUiType("ad_crawler.ui")[0]
 
@@ -67,15 +84,16 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     repeat_cnt = self.spin_cnt.value()
     target_url = self.edit_url.text()
+    global DEVICE
+    DEVICE = "PC" if self.radio_pc.isChecked() else "MOBILE"
 
     self.progress_bar.setMaximum(repeat_cnt)
     self.set_log_text("#######################################")
     self.set_log_text(f"크롤링 작업 시작(반복횟수 : {repeat_cnt}회)")
     self.set_log_text("#######################################")
 
-    browser = get_browser(self, 'PC')
+    browser = get_browser(self)
     browser.get(target_url)
-
 
     # 전역 변수 세팅 및 초기화
     set_global_variables(browser)
@@ -83,34 +101,45 @@ class AdCrawler_Window(QMainWindow, form_class):
     # 엑셀 파일 생성
     create_excel()
 
-    print(f"ROOT_URL : {ROOT_URL}")
-    print(f"MEDIA_NAME : {MEDIA_NAME}")
-    print(f"FILE_NAME : {FILE_NAME}")
+    self.set_log_text(f"매체명 : {MEDIA_NAME}")
+    self.set_log_text(f"파일명 : {FILE_NAME}")
 
-    # 크롤링 진행
-    crawl_ad(browser)
-    rownum = 1
-    for ad_info in AD_INFO_LIST:
-      landing_info = get_landing_info(browser, ad_info)
-      if is_not_dup(landing_info['url']):
-        excel_input = get_excel_input(ad_info, landing_info, repeat_cnt)
-        rownum += 1
-        write_excel(excel_input, rownum)
-    # for i in range(1, repeat_cnt+1):
-    #   sleep(1)
-    #   self.progress_bar.setValue(i)
-    #   QApplication.processEvents()
+    for i in range(1, repeat_cnt+1):
+      try:
+        set_crawl_init()  # 크롤링 정보 초기화
+        browser.get(target_url)
+        crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
+        for ad_info in AD_INFO_LIST:
+          if ad_info['url'] in AD_CLASS_DICT:  # 광고 url를 key로 해서 관리
+            # 이미 존재하는 url이라면 cnt +1
+            AD_CLASS_DICT[ad_info['url']].add_cnt()
+          else:
+            # 새로운 url이라면 landing 정보 추가해서 생성
+            landing_info = get_landing_info(browser, ad_info)
+            if is_not_dup(landing_info['url']):
+              AD_CLASS_DICT[ad_info['url']] = Ad(MEDIA_NAME, DEVICE, get_image(ad_info['image']), ad_info['text'], repeat_cnt, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+      except Exception as e:
+        pass
+      finally:
+        self.set_log_text(f"{i}회 진행 완료")
+        self.progress_bar.setValue(i)
+        QApplication.processEvents()
+
+    save_excel()
+    browser.quit()
+    self.set_log_text("#######################################")
+    self.set_log_text("크롤링 작업 완료")
+    self.set_log_text("#######################################")
 
 # 크롬 브라우저 로드
-def get_browser(self, device):
+def get_browser(self):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  # 임시 주석 처리
-  # options.add_argument("headless")
+  options.add_argument("headless")
 
-  if device == 'mobile':
+  if DEVICE == 'MOBILE':
     mobile_emulation = {"deviceName": "iPhone X"}
     options.add_experimental_option("mobileEmulation", mobile_emulation)
 
@@ -136,7 +165,9 @@ def set_global_variables(browser):
   global MEDIA_NAME
   MEDIA_NAME = get_media_name(browser)
   global FILE_NAME
-  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}" + FILE_SUFFIX
+  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}_{DEVICE}" + FILE_SUFFIX
+
+def set_crawl_init():
   global AD_INFO_LIST
   AD_INFO_LIST = []
   global AD_INFO_SET
@@ -153,13 +184,58 @@ def create_excel():
   for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
     ws.cell(row=1, column=j).value = kwd
 
+  ws.column_dimensions['C'].width = 50
+  ws.column_dimensions['D'].width = 20
+  ws.column_dimensions['G'].width = 20
+  ws.column_dimensions['H'].width = 50
+  ws.column_dimensions['I'].width = 50
+
   wb.save(FILE_PATH + FILE_NAME)
 
-# 엑셀 파일 기록
-def write_excel(excel_input, rownum):
+# 엑셀 파일 광고 존재 여부 확인 후 업데이트
+def check_update_excel(ad_url):
   wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
   ws = wb.active
 
+  for index, row in enumerate(ws.rows, start=1):
+    if ad_url == row[7].value:
+      ws.cell(row=index, column=6).value = row[5].value + 1
+      wb.save(FILE_PATH + FILE_NAME)
+      return True
+  return False
+
+# 엑셀 파일 저장(마지막에 한 번에)
+def save_excel():
+  wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
+  ws = wb.active
+  rownum = ws.max_row + 1
+
+  for url, ad_class in AD_CLASS_DICT.items():
+    ws.row_dimensions[rownum].height = 70
+    ws['A'+str(rownum)] = ad_class.media
+    ws['B'+str(rownum)] = ad_class.device
+    image = ad_class.thumb
+    if type(image) != str:
+      image.height = 85
+      ws.add_image(image, 'C'+str(rownum))
+    else:
+      ws['C'+str(rownum)] = image
+    ws['D'+str(rownum)] = ad_class.text
+    ws['E'+str(rownum)] = ad_class.repeat_cnt
+    ws['F'+str(rownum)] = ad_class.ad_cnt
+    ws['G'+str(rownum)] = ad_class.landing_title
+    ws['H'+str(rownum)] = ad_class.ad_url
+    ws['I'+str(rownum)] = ad_class.landing_url
+    rownum += 1
+
+  wb.save(FILE_PATH + FILE_NAME)
+
+# 엑셀 파일 insert (존재 하지 않는 경우)
+def insert_excel(excel_input):
+  wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
+  ws = wb.active
+
+  rownum = ws.max_row+1
   ws.row_dimensions[rownum].height = 70
   ws['A'+str(rownum)] = excel_input['media']
   ws['B'+str(rownum)] = excel_input['device']
@@ -222,7 +298,7 @@ def isAd(href):
     return True
 
 # 광고 정보 추출(from a 태그)
-def get_a_info(a_tag):
+def get_ad_info(a_tag):
   ad_info = {}
   text = ''
   image = ''
@@ -251,11 +327,16 @@ def get_landing_info(browser, ad_info):
   landing_url = ''
 
   try:
+    # res = requests.get(ad_info['url'])
+    # soup = BeautifulSoup(res.content, "html.parser")
+    # landing_title = soup.find("title").get_text()
+    # landing_url = res.url
+
+    browser.set_page_load_timeout(2)
     browser.switch_to.new_window('tab')
     browser.get(ad_info['url'])
     landing_title = browser.title
     landing_url = browser.current_url
-    close_new_tabs(browser)
 
   except Exception as e:
     pass
@@ -263,6 +344,7 @@ def get_landing_info(browser, ad_info):
   finally:
     landing_info['title'] = landing_title
     landing_info['url'] = landing_url
+    close_new_tabs(browser)
 
   return landing_info
 
@@ -290,7 +372,7 @@ def crawl_ad(browser):
 
     for a_tag in a_tags:
       if isAd(a_tag.get_attribute('href')):
-        ad_info = get_a_info(a_tag)
+        ad_info = get_ad_info(a_tag)
         set_ad_info(ad_info)
 
     # 하위 iframe 조회 및 step into
