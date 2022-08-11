@@ -28,6 +28,7 @@ ROOT_URL = ''
 MEDIA_NAME = ''
 AD_INFO_LIST = []
 AD_CLASS_DICT = {}
+LANDING_CLASS_DICT = {}
 AD_INFO_SET = set()
 LANDING_INFO_SET = set()
 DEVICE_LIST = []
@@ -113,13 +114,18 @@ class AdCrawler_Window(QMainWindow, form_class):
     self.set_log_text(f"매체명 : {MEDIA_NAME}")
     self.set_log_text(f"파일명 : {FILE_NAME}")
 
-    for device in DEVICE_LIST:
+    for loop_index, device in enumerate(DEVICE_LIST, start=1):
       self.progress_bar.setMaximum(REPEAT_CNT * len(DEVICE_LIST))
       self.set_log_text("#######################################")
-      self.set_log_text("크롤링 작업 시작_" + datetime.datetime.now().strftime("%Y %m %d %H %M"))
+      self.set_log_text("크롤링 작업 시작_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
       self.set_log_text(f" - 반복회수 : {REPEAT_CNT}")
       self.set_log_text(f" - 기기종류 : {DEVICE_LIST} 중 {device}")
       self.set_log_text("#######################################")
+
+      global AD_CLASS_DICT
+      AD_CLASS_DICT.clear()
+      global LANDING_CLASS_DICT
+      LANDING_CLASS_DICT.clear()
 
       browser = get_browser(self, device)
       browser.get(TARGET_URL)
@@ -139,19 +145,25 @@ class AdCrawler_Window(QMainWindow, form_class):
               # 새로운 url이라면 landing 정보 추가해서 생성
               landing_info = get_landing_info(browser, ad_info)
               if is_not_dup(landing_info['url']):
-                AD_CLASS_DICT[ad_info['url']] = Ad(MEDIA_NAME, DEVICE, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+                if landing_info['url'] in LANDING_CLASS_DICT:
+                  LANDING_CLASS_DICT[landing_info['url']].add_cnt()
+                else:
+                  ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+                  AD_CLASS_DICT[ad_info['url']] = ad_class
+                  LANDING_CLASS_DICT[landing_info['url']] = ad_class
+
         except Exception as e:
           pass
         finally:
           self.set_log_text(f"{i}회 진행 완료")
-          self.progress_bar.setValue(i)
+          self.progress_bar.setValue(i * loop_index)
           QApplication.processEvents()
 
       save_excel()
       browser.quit()
       self.btn_start.setEnabled(True)
       self.set_log_text("#######################################")
-      self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y %m %d %H %M"))
+      self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
       self.set_log_text("#######################################")
 
 # 크롬 브라우저 로드
@@ -159,7 +171,7 @@ def get_browser(self, device):
   self.set_log_text("크롬 브라우저 로딩 중 입니다.")
 
   options = webdriver.ChromeOptions()
-  # options.add_argument("headless")
+  options.add_argument("headless")
 
   if device == 'MOBILE':
     mobile_emulation = {"deviceName": "iPhone X"}
@@ -255,7 +267,7 @@ def save_excel():
     image = ad_class.thumb
     if type(image) != str:
       image.height = 85
-      image.width = 40
+      image.width = 240
       ws.add_image(image, 'C'+str(rownum))
     else:
       ws['C'+str(rownum)] = image
