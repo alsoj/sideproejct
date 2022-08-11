@@ -7,6 +7,8 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
+import requests
+
 from openpyxl import Workbook, load_workbook
 import datetime
 
@@ -86,7 +88,7 @@ class MallCrawler(QMainWindow, form_class):
       options = webdriver.ChromeOptions()
       options.add_argument("headless")
       browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-      browser.set_page_load_timeout(10)
+      browser.set_page_load_timeout(30)
 
       self.progress_bar.setMaximum(len(KEYWORD_LIST))
       i = 0
@@ -161,21 +163,76 @@ def create_excel(crawl_type):
 
   wb.save(FILE_PATH+FILE_NAME)
 
+def is_soho_url(url):
+  if 'smartstore' in url \
+          or 'ssg.com' in url \
+          or 'coupang' in url \
+          or '11st' in url \
+          or 'balaan' in url \
+          or 'gmarket' in url \
+          or 'ssfshop' in url \
+          or 'auction' in url \
+          or 'tmon' in url \
+          or 'SSG.COM' in url \
+          or 'danawa' in url \
+          or 'lotte' in url \
+          or 'gsshop' in url \
+          or 'cj' in url \
+          or 'hmall' in url \
+          or 'naver' in url \
+          or 'musinsa' in url \
+          or 'wemakeprice' in url:
+    return False
+  else:
+    return True
+
 ####################################
 # 해당 페이지 내에 존재하는 쇼핑몰 이동
 ####################################
 def go_mall_in_page(self, browser, KEYWORD):
-  # 썸네일 이미지가 있는 건들만 List로 추출(썸네일 없는 건은 광고)
-  mall_thumb_list = browser.find_elements(by=By.CLASS_NAME, value='ad_thumb')
+  url_list = browser.find_elements(by=By.CLASS_NAME, value='url_area')
 
-  for mall_thumb in mall_thumb_list:
+  for url in url_list:
     try:
-      mall_thumb.click()
-      sleep(3)
-      get_mall_info(self, browser, KEYWORD)
+      url = url.text.split(' ')[0]
+      if is_soho_url(url):
+        # selenium에서 tab을 띄워서 확인하는데 시간이 오래 소요돼서, requests로 선확인
+        res = requests.get(url)
+        res_text = res.text
+        if 'cafe24' in res_text or '카페24' in res_text:
+          self.log_text_browser.append("카페24 업체 PASS : " + url.split('/')[2])
+          QApplication.processEvents()
+          pass
+        elif 'makeshop' in res_text:
+          self.log_text_browser.append("메이크샵 업체 PASS : " + url.split('/')[2])
+          QApplication.processEvents()
+          pass
+        else:
+          browser.switch_to.new_window('tab')
+          browser.get(url)
+          sleep(2)
+          get_mall_info(self, browser, KEYWORD)
+      else:
+        self.log_text_browser.append("비대상 업체 PASS : " + url.split('/')[2])
+        QApplication.processEvents()
+        pass
     except Exception as e:
-      close_new_tabs(browser)
       pass
+    finally:
+      close_new_tabs(browser)
+
+
+  # 썸네일 이미지가 있는 건들만 List로 추출(썸네일 없는 건은 광고)
+  # mall_thumb_list = browser.find_elements(by=By.CLASS_NAME, value='ad_thumb')
+  #
+  # for mall_thumb in mall_thumb_list:
+  #   try:
+  #     mall_thumb.click()
+  #     sleep(3)
+  #     get_mall_info(self, browser, KEYWORD)
+  #   except Exception as e:
+  #     close_new_tabs(browser)
+  #     pass
 
 ####################################
 # 다음 페이지로 이동
@@ -294,7 +351,7 @@ def get_tel(source):
 # mall 정보 조회
 ####################################
 def get_mall_info(self, browser, KEYWORD):
-  browser.switch_to.window(window_name=browser.window_handles[-1])
+  # browser.switch_to.window(window_name=browser.window_handles[-1])
 
   source = browser.page_source
   cur_url = browser.current_url
@@ -317,9 +374,9 @@ def get_mall_info(self, browser, KEYWORD):
     QApplication.processEvents()
     # print('메이크샵 호스팅 업체 PASS : ', cur_url.split('/')[2])
     # print("===================================================================")
-  elif 'musinsa' in cur_url or 'lfmall' in cur_url or 'lotteon' in cur_url or 'danawa' in cur_url or 'navaer' in cur_url or 'blog' in cur_url or 'ssg' in cur_url:
-    self.log_text_browser.append("비대상 업체 PASS : " + cur_url.split('/')[2])
+  elif 'musinsa' in cur_url or 'lfmall' in cur_url or 'lotteon' in cur_url or 'danawa' in cur_url or 'navar' in cur_url or 'blog' in cur_url or 'ssg' in cur_url:
     # self.log_text_browser.append("===================================================================")
+    self.log_text_browser.append("비대상 업체 PASS : " + cur_url.split('/')[2])
     QApplication.processEvents()
   else:
     title = browser.title
@@ -349,7 +406,7 @@ def get_mall_info(self, browser, KEYWORD):
     ws.append(temp_row)
     wb.save(FILE_PATH+FILE_NAME)
 
-  close_new_tabs(browser)
+  # close_new_tabs(browser)
 
 ####################################
 # 팝업창 종료
