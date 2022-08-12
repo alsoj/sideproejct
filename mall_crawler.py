@@ -8,6 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
 import requests
+import bs4
 
 from openpyxl import Workbook, load_workbook
 import datetime
@@ -181,6 +182,8 @@ def is_soho_url(url):
           or 'hmall' in url \
           or 'naver' in url \
           or 'musinsa' in url \
+          or 'lfmall' in url \
+          or 'hyundai' in url \
           or 'wemakeprice' in url:
     return False
   else:
@@ -198,7 +201,9 @@ def go_mall_in_page(self, browser, KEYWORD):
       if is_soho_url(url):
         try:
           # selenium에서 tab을 띄워서 확인하는데 시간이 오래 소요돼서, requests로 선확인
-          res = requests.get(url, timeout=5)
+          headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36"}
+          res = requests.get(url, timeout=5, headers=headers)
+          res.encoding = 'UTF-8'
           res_text = res.text
         except Exception as e:
           res_text = ''
@@ -212,10 +217,22 @@ def go_mall_in_page(self, browser, KEYWORD):
           QApplication.processEvents()
           pass
         else:
-          browser.switch_to.new_window('tab')
-          browser.get(url)
-          sleep(2)
-          get_mall_info(self, browser, KEYWORD)
+          ceo = get_ceo_name(res_text)
+          tel = get_tel(res_text)
+          email = get_email(res_text)
+
+          if get_title(res.text).isalpha() is False:
+            res.encoding = 'EUC-KR'
+          title = get_title(res.text)
+
+          # sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
+          temp_row = [KEYWORD, title, url, ceo, email, tel]
+          save_excel(temp_row)
+
+          # browser.switch_to.new_window('tab')
+          # browser.get(url)
+          # sleep(2)
+          # get_mall_info(self, browser, KEYWORD)
       else:
         self.log_text_browser.append("비대상 업체 PASS : " + url.split('/')[2])
         QApplication.processEvents()
@@ -352,6 +369,13 @@ def get_tel(source):
   return tel.strip()
 
 ####################################
+# title 정보 조회
+####################################
+def get_title(source):
+  html = bs4.BeautifulSoup(source, "lxml")
+  return html.title.text
+
+####################################
 # mall 정보 조회
 ####################################
 def get_mall_info(self, browser, KEYWORD):
@@ -362,24 +386,14 @@ def get_mall_info(self, browser, KEYWORD):
 
   if '카페24' in source or 'cafe24' in source:
     self.log_text_browser.append("카페24 호스팅 업체 PASS : " + cur_url.split('/')[2])
-    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
-    # print('카페24 호스팅 업체 PASS : ', cur_url.split('/')[2])
-    # print("===================================================================")
   elif 'smartstore' in cur_url:
     self.log_text_browser.append("스마트스토어 업체 PASS : " + cur_url.split('/')[2] + "/" + cur_url.split('/')[3].split('?')[0])
-    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
-    # print('스마트스토어 업체 PASS : ', cur_url.split('/')[2] + "/" + cur_url.split('/')[3].split('?')[0])
-    # print("===================================================================")
   elif 'makeshop' in source:
     self.log_text_browser.append("메이크샵 호스팅 업체 PASS : " + cur_url.split('/')[2])
-    # self.log_text_browser.append("===================================================================")
     QApplication.processEvents()
-    # print('메이크샵 호스팅 업체 PASS : ', cur_url.split('/')[2])
-    # print("===================================================================")
   elif 'musinsa' in cur_url or 'lfmall' in cur_url or 'lotteon' in cur_url or 'danawa' in cur_url or 'navar' in cur_url or 'blog' in cur_url or 'ssg' in cur_url:
-    # self.log_text_browser.append("===================================================================")
     self.log_text_browser.append("비대상 업체 PASS : " + cur_url.split('/')[2])
     QApplication.processEvents()
   else:
@@ -395,22 +409,18 @@ def get_mall_info(self, browser, KEYWORD):
     # 전화번호 추출
     tel = get_tel(source)
 
-    wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
-    ws = wb.active
-
     # sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
     temp_row = [KEYWORD, title, site_url, ceo, email, tel]
-    # print("대상 사이트 추출 : ", title)
-    # print("사이트 url : ", site_url)
-    # print("대표 : ", ceo)
-    # print("이메일 주소 : ", email)
-    # print("전화번호 : ", tel)
-    # print("===================================================================")
+    save_excel(temp_row)
 
-    ws.append(temp_row)
-    wb.save(FILE_PATH+FILE_NAME)
-
-  # close_new_tabs(browser)
+####################################
+# 엑셀 저장
+####################################
+def save_excel(row):
+  wb = load_workbook(FILE_PATH + FILE_NAME, data_only=True)
+  ws = wb.active
+  ws.append(row)
+  wb.save(FILE_PATH + FILE_NAME)
 
 ####################################
 # 팝업창 종료
