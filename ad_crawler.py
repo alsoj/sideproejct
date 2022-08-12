@@ -267,7 +267,7 @@ def save_excel():
     image = ad_class.thumb
     if type(image) != str:
       image.height = 85
-      image.width = 240
+      image.width = 200
       ws.add_image(image, 'C'+str(rownum))
     else:
       ws['C'+str(rownum)] = image
