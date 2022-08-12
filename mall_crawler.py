@@ -196,15 +196,19 @@ def go_mall_in_page(self, browser, KEYWORD):
     try:
       url = url.text.split(' ')[0]
       if is_soho_url(url):
-        # selenium에서 tab을 띄워서 확인하는데 시간이 오래 소요돼서, requests로 선확인
-        res = requests.get(url)
-        res_text = res.text
+        try:
+          # selenium에서 tab을 띄워서 확인하는데 시간이 오래 소요돼서, requests로 선확인
+          res = requests.get(url, timeout=5)
+          res_text = res.text
+        except Exception as e:
+          res_text = ''
+
         if 'cafe24' in res_text or '카페24' in res_text:
-          self.log_text_browser.append("카페24 업체 PASS : " + url.split('/')[2])
+          self.log_text_browser.append("카페24 호스팅 업체 PASS : " + url.split('/')[2])
           QApplication.processEvents()
           pass
         elif 'makeshop' in res_text:
-          self.log_text_browser.append("메이크샵 업체 PASS : " + url.split('/')[2])
+          self.log_text_browser.append("메이크샵 호스팅 업체 PASS : " + url.split('/')[2])
           QApplication.processEvents()
           pass
         else:
