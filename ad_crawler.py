@@ -144,6 +144,7 @@ class AdCrawler_Window(QMainWindow, form_class):
             else:
               # 새로운 url이라면 landing 정보 추가해서 생성
               landing_info = get_landing_info(browser, ad_info)
+              # print(landing_info['url'])
               if is_not_dup(landing_info['url']):
                 if landing_info['url'] in LANDING_CLASS_DICT:
                   LANDING_CLASS_DICT[landing_info['url']].add_cnt()
@@ -234,9 +235,9 @@ def create_excel():
   for kwd, j in zip(sub, list(range(1, len(sub) + 1))):
     ws.cell(row=1, column=j).value = kwd
 
-  ws.column_dimensions['C'].width = 50
-  ws.column_dimensions['D'].width = 20
-  ws.column_dimensions['G'].width = 20
+  ws.column_dimensions['C'].width = 25
+  ws.column_dimensions['D'].width = 25
+  ws.column_dimensions['G'].width = 40
   ws.column_dimensions['H'].width = 50
   ws.column_dimensions['I'].width = 50
 
@@ -363,6 +364,7 @@ def get_ad_info(a_tag):
       image = images[0].get_attribute('src')
 
   except Exception as e:
+    print(e)
     pass
 
   finally:
@@ -422,6 +424,7 @@ def crawl_ad(browser):
     a_tags = browser.find_elements(by=By.TAG_NAME, value='a')
 
     for a_tag in a_tags:
+      # print(a_tag.get_attribute('href'))
       if isAd(a_tag.get_attribute('href')):
         ad_info = get_ad_info(a_tag)
         set_ad_info(ad_info)
@@ -442,8 +445,9 @@ def crawl_ad(browser):
 
 # ad info 세팅
 def set_ad_info(ad_info):
+  # print(ad_info)
   global AD_INFO_SET
-  if (len(ad_info['text']) > 0 or len(ad_info['image']) > 0) and ad_info['url'] not in AD_INFO_SET:
+  if (len(ad_info['text']) > 0 or len(ad_info['image']) > 0 or 'ad' in ad_info['url']) and ad_info['url'] not in AD_INFO_SET:
     global AD_INFO_LIST
     AD_INFO_LIST.append(ad_info)
     AD_INFO_SET.add(ad_info['url'])
