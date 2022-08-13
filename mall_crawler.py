@@ -220,10 +220,10 @@ def go_mall_in_page(self, browser, KEYWORD):
           ceo = get_ceo_name(res_text)
           tel = get_tel(res_text)
           email = get_email(res_text)
-
-          if get_title(res.text).isalpha() is False:
-            res.encoding = 'EUC-KR'
-          title = get_title(res.text)
+          title = get_title(res_text)
+          # pattern = re.compile('[^A-Za-z가-힣]')
+          # if pattern.match(get_title(res_text)) is None:
+          #   res.encoding = 'EUC-KR'
 
           # sub = ['검색어', '쇼핑몰 명', 'URL', '대표자 명', 'EMAIL', '전화번호']
           temp_row = [KEYWORD, title, url, ceo, email, tel]
