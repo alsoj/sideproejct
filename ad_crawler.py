@@ -13,6 +13,7 @@ from openpyxl.drawing.image import Image
 
 import datetime
 from time import sleep
+import re
 
 import PIL
 import io
@@ -128,6 +129,7 @@ class AdCrawler_Window(QMainWindow, form_class):
       LANDING_CLASS_DICT.clear()
 
       browser = get_browser(self, device)
+      browser.set_page_load_timeout(10)
       browser.get(TARGET_URL)
 
       for i in range(1, REPEAT_CNT+1):
@@ -144,7 +146,6 @@ class AdCrawler_Window(QMainWindow, form_class):
             else:
               # 새로운 url이라면 landing 정보 추가해서 생성
               landing_info = get_landing_info(browser, ad_info)
-              # print(landing_info['url'])
               if is_not_dup(landing_info['url']):
                 if landing_info['url'] in LANDING_CLASS_DICT:
                   LANDING_CLASS_DICT[landing_info['url']].add_cnt()
@@ -185,6 +186,7 @@ def get_browser(self, device):
   return browser
 
 def browser_scroll_down(browser):
+  sleep(3)
   scroll_from = 0
   scroll_to = 200
   scroll_height = browser.execute_script("return document.body.scrollHeight")
@@ -222,9 +224,9 @@ def set_crawl_init():
   global AD_INFO_LIST
   AD_INFO_LIST = []
   global AD_INFO_SET
-  AD_INFO_SET = set()
+  AD_INFO_SET.clear()
   global LANDING_INFO_SET
-  LANDING_INFO_SET = set()
+  LANDING_INFO_SET.clear()
 
 # 엑셀 파일 생성
 def create_excel():
@@ -327,16 +329,17 @@ def get_media_name():
 def isAd(href):
   if href is None:
     return False
-  elif ROOT_URL in href:
-    return False
   elif 'ad' in href:
     if 'whythisad' in href \
       or 'adsense/support' in href \
       or 'reader' in href \
-      or 'header' in href:
+      or 'header' in href\
+      or 'info' in href:
       return False
     else:
       return True
+  elif ROOT_URL in href:
+    return False
   elif 'javascript' in href \
     or MEDIA_NAME in href \
     or 'youtube' in href \
@@ -360,11 +363,18 @@ def get_ad_info(a_tag):
     text = a_tag.text
     url = a_tag.get_attribute('href')
     images = a_tag.find_elements(by=By.TAG_NAME, value='img')
+    onclick_attr = a_tag.get_attribute('onclick')
     if len(images) > 0:
       image = images[0].get_attribute('src')
 
+    # onclick에 실제 연결 url이 있는 경우
+    if onclick_attr is not None and "(" in onclick_attr and ")" in onclick_attr:
+      onclick = re.findall('\(([^)]+)', onclick_attr)[0].replace("\"", "").replace("'", "")
+      onclick = onclick.split("//")[-1]
+      onclick = 'https://' + onclick
+      if len(onclick) > 0:
+        url = onclick
   except Exception as e:
-    print(e)
     pass
 
   finally:
@@ -384,14 +394,13 @@ def get_landing_info(browser, ad_info):
     # soup = BeautifulSoup(res.content, "html.parser")
     # landing_title = soup.find("title").get_text()
     # landing_url = res.url
-
-    browser.set_page_load_timeout(2)
     browser.switch_to.new_window('tab')
     browser.get(ad_info['url'])
     landing_title = browser.title
     landing_url = browser.current_url
 
   except Exception as e:
+    print(e)
     pass
 
   finally:
@@ -424,7 +433,6 @@ def crawl_ad(browser):
     a_tags = browser.find_elements(by=By.TAG_NAME, value='a')
 
     for a_tag in a_tags:
-      # print(a_tag.get_attribute('href'))
       if isAd(a_tag.get_attribute('href')):
         ad_info = get_ad_info(a_tag)
         set_ad_info(ad_info)
@@ -445,9 +453,11 @@ def crawl_ad(browser):
 
 # ad info 세팅
 def set_ad_info(ad_info):
-  # print(ad_info)
   global AD_INFO_SET
-  if (len(ad_info['text']) > 0 or len(ad_info['image']) > 0 or 'ad' in ad_info['url']) and ad_info['url'] not in AD_INFO_SET:
+  if ad_info is not None \
+    and (len(ad_info['text']) > 0 or len(ad_info['image']) > 0 or 'ad' in ad_info['url']) \
+    and ad_info['url'] not in AD_INFO_SET:
+
     global AD_INFO_LIST
     AD_INFO_LIST.append(ad_info)
     AD_INFO_SET.add(ad_info['url'])
