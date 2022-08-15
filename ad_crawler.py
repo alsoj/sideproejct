@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+import requests
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image
@@ -27,10 +28,11 @@ FILE_NAME = ''
 
 ROOT_URL = ''
 MEDIA_NAME = ''
-AD_INFO_LIST = []
+# AD_INFO_LIST = []
+AD_INFO_DICT = {}
 AD_CLASS_DICT = {}
 LANDING_CLASS_DICT = {}
-AD_INFO_SET = set()
+# AD_INFO_SET = set()
 LANDING_INFO_SET = set()
 DEVICE_LIST = []
 REPEAT_CNT = 0
@@ -105,6 +107,7 @@ class AdCrawler_Window(QMainWindow, form_class):
 
     # 디바이스 타입 세팅
     self.set_device_type()
+    self.progress_bar.setValue(0)
 
     # 전역 변수 세팅 및 초기화
     set_global_variables()
@@ -139,7 +142,8 @@ class AdCrawler_Window(QMainWindow, form_class):
           browser_scroll_down(browser)  # 브라우저 스크롤 다운
           crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
-          for ad_info in AD_INFO_LIST:
+          # for ad_info in AD_INFO_LIST:
+          for ad_info in AD_INFO_DICT.values():
             if ad_info['url'] in AD_CLASS_DICT:  # 광고 url를 key로 해서 관리
               # 이미 존재하는 url이라면 cnt +1
               AD_CLASS_DICT[ad_info['url']].add_cnt()
@@ -186,10 +190,10 @@ def get_browser(self, device):
   return browser
 
 def browser_scroll_down(browser):
-  sleep(3)
   scroll_from = 0
   scroll_to = 200
   scroll_height = browser.execute_script("return document.body.scrollHeight")
+  sleep(3)
   while (scroll_to < scroll_height):
     browser.execute_script(f"window.scrollTo({scroll_from},{scroll_to})")
     scroll_height = browser.execute_script("return document.body.scrollHeight")
@@ -221,10 +225,12 @@ def set_global_variables():
   FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}{device}" + FILE_SUFFIX
 
 def set_crawl_init():
-  global AD_INFO_LIST
-  AD_INFO_LIST = []
-  global AD_INFO_SET
-  AD_INFO_SET.clear()
+  # global AD_INFO_LIST
+  # AD_INFO_LIST = []
+  global AD_INFO_DICT
+  AD_INFO_DICT.clear()
+  # global AD_INFO_SET
+  # AD_INFO_SET.clear()
   global LANDING_INFO_SET
   LANDING_INFO_SET.clear()
 
@@ -364,17 +370,24 @@ def get_ad_info(a_tag):
     url = a_tag.get_attribute('href')
     images = a_tag.find_elements(by=By.TAG_NAME, value='img')
     onclick_attr = a_tag.get_attribute('onclick')
+
+    # 이미지의 크기가 1kb 초과인 것들은 썸네일로 간주
     if len(images) > 0:
-      image = images[0].get_attribute('src')
+      image_src = images[0].get_attribute('src') if images[0].get_attribute('src') is not None else ''
+      if len(image_src) > 0:
+        image_content = requests.get(image_src).content
+        if len(image_content) > 1024:
+          image = image_src
 
     # onclick에 실제 연결 url이 있는 경우
-    if onclick_attr is not None and "(" in onclick_attr and ")" in onclick_attr:
+    if onclick_attr is not None and "(" in onclick_attr and ")" in onclick_attr and "/" in onclick_attr:
       onclick = re.findall('\(([^)]+)', onclick_attr)[0].replace("\"", "").replace("'", "")
       onclick = onclick.split("//")[-1]
       onclick = 'https://' + onclick
       if len(onclick) > 0:
         url = onclick
   except Exception as e:
+    print("get_ad_info 오류 : " + str(e))
     pass
 
   finally:
@@ -400,7 +413,7 @@ def get_landing_info(browser, ad_info):
     landing_url = browser.current_url
 
   except Exception as e:
-    print(e)
+    print("get_landing_info 오류 " + e)
     pass
 
   finally:
@@ -421,6 +434,7 @@ def get_image(image_url):
       image_file = io.BytesIO(r.data)
       img = Image(image_file)
   except Exception as e:
+    print("get_image 오류 : " + e)
     pass
 
   finally:
@@ -441,26 +455,42 @@ def crawl_ad(browser):
     iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
 
     # 브라우저에 iframe이 있는 경우 순서대로 iframe으로 in
-    if len(iframes) > 0:
+    if iframes is not None and len(iframes) > 0:
       for i in range(len(iframes)):
         browser.switch_to.frame(i)  # iframe으로 IN
         crawl_ad(browser)
         browser.switch_to.parent_frame()  # iframe에서 OUT
 
   except Exception as e:
-    print(str(e)[0:30])
+    print("crawl_ad 오류 : ", e)
     pass
 
 # ad info 세팅
 def set_ad_info(ad_info):
-  global AD_INFO_SET
-  if ad_info is not None \
-    and (len(ad_info['text']) > 0 or len(ad_info['image']) > 0 or 'ad' in ad_info['url']) \
-    and ad_info['url'] not in AD_INFO_SET:
+  # global AD_INFO_SET
+  global AD_INFO_DICT
 
-    global AD_INFO_LIST
-    AD_INFO_LIST.append(ad_info)
-    AD_INFO_SET.add(ad_info['url'])
+  try:
+    if ad_info is None:
+      return
+
+    # 이미 수집된 url 중 이미지/텍스트 없으면 보충
+    if ad_info['url'] in AD_INFO_DICT:
+      if len(AD_INFO_DICT[ad_info['url']]['image']) == 0 and len(ad_info['image']) > 0:
+        AD_INFO_DICT[ad_info['url']]['image'] = ad_info['image']
+      if len(AD_INFO_DICT[ad_info['url']]['text']) == 0 and len(ad_info['text']) > 0:
+        AD_INFO_DICT[ad_info['url']]['text'] = ad_info['text']
+
+    elif (len(ad_info['text']) > 0 or len(ad_info['image']) > 0 or 'ad' in ad_info['url']) \
+      and ad_info['url'] not in AD_INFO_DICT:
+      AD_INFO_DICT[ad_info['url']] = ad_info
+
+      # global AD_INFO_LIST
+      # AD_INFO_LIST.append(ad_info)
+      # AD_INFO_SET.add(ad_info['url'])
+
+  except Exception as e:
+    print("set_ad_info 오류 : " + str(e))
 
 # 엑셀 입력 값 세팅
 def get_excel_input(ad_info, landing_info, repeat_cnt):
