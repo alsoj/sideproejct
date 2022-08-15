@@ -139,7 +139,8 @@ class AdCrawler_Window(QMainWindow, form_class):
         try:
           set_crawl_init()  # 크롤링 정보 초기화
           browser.get(TARGET_URL)
-          browser_scroll_down(browser)  # 브라우저 스크롤 다운
+          for j in range(5):
+            browser_scroll_down(browser)  # 브라우저 스크롤 다운
           crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
 
           # for ad_info in AD_INFO_LIST:
@@ -150,13 +151,14 @@ class AdCrawler_Window(QMainWindow, form_class):
             else:
               # 새로운 url이라면 landing 정보 추가해서 생성
               landing_info = get_landing_info(browser, ad_info)
-              if is_not_dup(landing_info['url']):
-                if landing_info['url'] in LANDING_CLASS_DICT:
-                  LANDING_CLASS_DICT[landing_info['url']].add_cnt()
-                else:
-                  ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
-                  AD_CLASS_DICT[ad_info['url']] = ad_class
-                  LANDING_CLASS_DICT[landing_info['url']] = ad_class
+              # if is_not_dup(landing_info['url']):
+
+              if landing_info['url'] in LANDING_CLASS_DICT:
+                LANDING_CLASS_DICT[landing_info['url']].add_cnt()
+              else:
+                ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+                AD_CLASS_DICT[ad_info['url']] = ad_class
+                LANDING_CLASS_DICT[landing_info['url']] = ad_class
 
         except Exception as e:
           pass
@@ -193,7 +195,7 @@ def browser_scroll_down(browser):
   scroll_from = 0
   scroll_to = 200
   scroll_height = browser.execute_script("return document.body.scrollHeight")
-  sleep(3)
+  sleep(1)
   while (scroll_to < scroll_height):
     browser.execute_script(f"window.scrollTo({scroll_from},{scroll_to})")
     scroll_height = browser.execute_script("return document.body.scrollHeight")
@@ -433,6 +435,8 @@ def get_image(image_url):
       r = http.request('GET', image_url, headers=headers)
       image_file = io.BytesIO(r.data)
       img = Image(image_file)
+      if img.height < 15 or img.width < 15:
+        img = ''
   except Exception as e:
     print("get_image 오류 : " + e)
     pass
@@ -492,19 +496,6 @@ def set_ad_info(ad_info):
   except Exception as e:
     print("set_ad_info 오류 : " + str(e))
 
-# 엑셀 입력 값 세팅
-def get_excel_input(ad_info, landing_info, repeat_cnt):
-  excel_input = {}
-  excel_input['media'] = MEDIA_NAME
-  excel_input['device'] = 'PC'
-  excel_input['thumb'] = get_image(ad_info['image'])
-  excel_input['text'] = ad_info['text']
-  excel_input['repeat_cnt'] = repeat_cnt
-  excel_input['ad_cnt'] = 1
-  excel_input['langding_title'] = landing_info['title']
-  excel_input['ad_url'] = ad_info['url']
-  excel_input['landing_url'] = landing_info['url']
-  return excel_input
 
 # 랜딩 페이지 기 등록 여부 확인
 def is_not_dup(landing_url):
