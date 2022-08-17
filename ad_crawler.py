@@ -26,6 +26,11 @@ FILE_PATH = './output/'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
+INPUT_FULL_FILE_NAME = ''
+INPUT_FILE_NAME = ''
+URL_LIST = ''
+IS_MULTI = False
+
 ROOT_URL = ''
 MEDIA_NAME = ''
 # AD_INFO_LIST = []
@@ -60,6 +65,27 @@ class AdCrawler_Window(QMainWindow, form_class):
     super().__init__()
     self.setupUi(self)
     self.btn_start.clicked.connect(self.btn_start_clicked)
+    self.btn_file.clicked.connect(self.btn_file_clicked)
+
+  # 파일 선택 클릭
+  def btn_file_clicked(self):
+    file_name = QFileDialog.getOpenFileName(self, '파일 선택', './', 'Excel(*.xlsx)')
+
+    if file_name[0]:  # 파일 선택
+      file_name = file_name[0]
+    else:  # 파일 미선택
+      return False
+
+    self.edit_file.setText(file_name)
+
+    global INPUT_FULL_FILE_NAME
+    INPUT_FULL_FILE_NAME = file_name
+    global INPUT_FILE_NAME
+    INPUT_FILE_NAME = file_name.split("/")[-1].replace(".xlsx", "")
+    global URL_LIST
+    URL_LIST = get_url_list(file_name)
+    global IS_MULTI
+    IS_MULTI = True
 
   # 로그 삭제
   def clear_log(self):
@@ -88,7 +114,7 @@ class AdCrawler_Window(QMainWindow, form_class):
     REPEAT_CNT = self.spin_cnt.value()
     global TARGET_URL
     TARGET_URL = self.edit_url.text()
-    if REPEAT_CNT <= 0 or len(TARGET_URL) == 0:
+    if REPEAT_CNT <= 0 or (len(TARGET_URL) == 0 and len(URL_LIST) == 0):
       self.set_log_text("필수 입력 값이 입력되지 않았습니다.")
       self.set_log_text("사이트 URL과 반복횟수를 확인 해주세요.")
       return False
@@ -109,70 +135,86 @@ class AdCrawler_Window(QMainWindow, form_class):
     self.set_device_type()
     self.progress_bar.setValue(0)
 
-    # 전역 변수 세팅 및 초기화
-    set_global_variables()
+    # 추출 결과 파일 명 세팅
+    set_file_name()
 
     # 엑셀 파일 생성
     create_excel()
-
-    self.set_log_text(f"매체명 : {MEDIA_NAME}")
     self.set_log_text(f"파일명 : {FILE_NAME}")
 
-    for loop_index, device in enumerate(DEVICE_LIST, start=1):
-      self.progress_bar.setMaximum(REPEAT_CNT * len(DEVICE_LIST))
-      self.set_log_text("#######################################")
-      self.set_log_text("크롤링 작업 시작_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
-      self.set_log_text(f" - 반복회수 : {REPEAT_CNT}")
-      self.set_log_text(f" - 기기종류 : {DEVICE_LIST} 중 {device}")
-      self.set_log_text("#######################################")
+    for TARGET_URL in URL_LIST:
+      # 전역 변수 세팅 및 초기화
+      set_global_variables(TARGET_URL)
 
-      global AD_CLASS_DICT
-      AD_CLASS_DICT.clear()
-      global LANDING_CLASS_DICT
-      LANDING_CLASS_DICT.clear()
+      self.set_log_text(f"매체명 : {MEDIA_NAME}")
 
-      browser = get_browser(self, device)
-      browser.set_page_load_timeout(10)
-      browser.get(TARGET_URL)
+      for loop_index, device in enumerate(DEVICE_LIST, start=1):
+        self.progress_bar.setMaximum(REPEAT_CNT * len(DEVICE_LIST))
+        self.set_log_text("#######################################")
+        self.set_log_text("크롤링 작업 시작_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
+        self.set_log_text(f" - 반복회수 : {REPEAT_CNT}")
+        self.set_log_text(f" - 기기종류 : {DEVICE_LIST} 중 {device}")
+        self.set_log_text("#######################################")
 
-      for i in range(1, REPEAT_CNT+1):
-        try:
-          set_crawl_init()  # 크롤링 정보 초기화
-          browser.get(TARGET_URL)
-          for j in range(5):
-            browser_scroll_down(browser)  # 브라우저 스크롤 다운
-          crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
+        global AD_CLASS_DICT
+        AD_CLASS_DICT.clear()
+        global LANDING_CLASS_DICT
+        LANDING_CLASS_DICT.clear()
 
-          # for ad_info in AD_INFO_LIST:
-          for ad_info in AD_INFO_DICT.values():
-            if ad_info['url'] in AD_CLASS_DICT:  # 광고 url를 key로 해서 관리
-              # 이미 존재하는 url이라면 cnt +1
-              AD_CLASS_DICT[ad_info['url']].add_cnt()
-            else:
-              # 새로운 url이라면 landing 정보 추가해서 생성
-              landing_info = get_landing_info(browser, ad_info)
-              # if is_not_dup(landing_info['url']):
+        browser = get_browser(self, device)
+        browser.set_page_load_timeout(10)
+        browser.get(TARGET_URL)
 
-              if landing_info['url'] in LANDING_CLASS_DICT:
-                LANDING_CLASS_DICT[landing_info['url']].add_cnt()
+        for i in range(1, REPEAT_CNT+1):
+          try:
+            set_crawl_init()  # 크롤링 정보 초기화
+            browser.get(TARGET_URL)
+            for j in range(5):
+              browser_scroll_down(browser)  # 브라우저 스크롤 다운
+            crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
+
+            # for ad_info in AD_INFO_LIST:
+            for ad_info in AD_INFO_DICT.values():
+              if ad_info['url'] in AD_CLASS_DICT:  # 광고 url를 key로 해서 관리
+                # 이미 존재하는 url이라면 cnt +1
+                AD_CLASS_DICT[ad_info['url']].add_cnt()
               else:
-                ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
-                AD_CLASS_DICT[ad_info['url']] = ad_class
-                LANDING_CLASS_DICT[landing_info['url']] = ad_class
+                # 새로운 url이라면 landing 정보 추가해서 생성
+                landing_info = get_landing_info(browser, ad_info)
+                # if is_not_dup(landing_info['url']):
 
-        except Exception as e:
-          pass
-        finally:
-          self.set_log_text(f"{i}회 진행 완료")
-          self.progress_bar.setValue(i * loop_index)
-          QApplication.processEvents()
+                if landing_info['url'] in LANDING_CLASS_DICT:
+                  LANDING_CLASS_DICT[landing_info['url']].add_cnt()
+                else:
+                  ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
+                  AD_CLASS_DICT[ad_info['url']] = ad_class
+                  LANDING_CLASS_DICT[landing_info['url']] = ad_class
 
-      save_excel()
-      browser.quit()
-      self.btn_start.setEnabled(True)
-      self.set_log_text("#######################################")
-      self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
-      self.set_log_text("#######################################")
+          except Exception as e:
+            pass
+          finally:
+            self.set_log_text(f"{i}회 진행 완료")
+            self.progress_bar.setValue(i * loop_index)
+            QApplication.processEvents()
+
+        save_excel()
+        browser.quit()
+        self.btn_start.setEnabled(True)
+        self.set_log_text("#######################################")
+        self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
+        self.set_log_text("#######################################")
+
+# 추출 URL 리스트 추출
+def get_url_list(file_name):
+  wb = load_workbook(file_name, data_only=True)
+  ws = wb.active
+
+  url_list = []
+
+  for row in ws.rows:
+    url_list.append(row[0].value)
+
+  return url_list
 
 # 크롬 브라우저 로드
 def get_browser(self, device):
@@ -211,20 +253,25 @@ def close_new_tabs(browser):
     tabs = browser.window_handles
   browser.switch_to.window(tabs[0])
 
-# 전역변수 세팅 및 초기화
-def set_global_variables():
-  global ROOT_URL
-  ROOT_URL = get_root_url()
-  global MEDIA_NAME
-  MEDIA_NAME = get_media_name()
-
+def set_file_name():
   device = ''
   if 'PC' in DEVICE_LIST:
     device += '_PC'
   if 'MOBILE' in DEVICE_LIST:
     device += '_MOBILE'
+
   global FILE_NAME
-  FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{MEDIA_NAME}{device}" + FILE_SUFFIX
+  if IS_MULTI:
+    FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_다중 추출{device}" + FILE_SUFFIX
+  else:
+    FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_단일 추출{device}" + FILE_SUFFIX
+
+# 전역변수 세팅 및 초기화
+def set_global_variables(target_url):
+  global ROOT_URL
+  ROOT_URL = get_root_url(target_url)
+  global MEDIA_NAME
+  MEDIA_NAME = get_media_name(target_url)
 
 def set_crawl_init():
   # global AD_INFO_LIST
@@ -317,12 +364,12 @@ def insert_excel(excel_input):
   wb.save(FILE_PATH + FILE_NAME)
 
 # 메인 URL 추출
-def get_root_url():
-  return TARGET_URL.split('/')[2]
+def get_root_url(target_url):
+  return target_url.split('/')[2]
 
 # 매체 명 추출
-def get_media_name():
-  root_url = TARGET_URL.split('/')[2]
+def get_media_name(target_url):
+  root_url = target_url.split('/')[2]
   media_name = root_url.replace("www.", "")
   media_name = media_name.replace(".com", "")
   media_name = media_name.replace(".co.kr", "")
