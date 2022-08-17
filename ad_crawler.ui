@@ -14,18 +14,18 @@
    <string>AdCrawler</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="layoutWidget">
+   <widget class="QWidget" name="">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>10</y>
       <width>601</width>
-      <height>461</height>
+      <height>468</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
         <layout class="QVBoxLayout" name="verticalLayout">
          <item>
@@ -33,7 +33,7 @@
            <item>
             <widget class="QLabel" name="label_url">
              <property name="text">
-              <string>사이트 URL</string>
+              <string>사이트 URL </string>
              </property>
             </widget>
            </item>
@@ -44,6 +44,31 @@
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="QLabel" name="label_file">
+             <property name="text">
+              <string>파일선택     </string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="edit_file">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btn_file">
+             <property name="text">
+              <string>파일찾기</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
            <item>
             <widget class="QLabel" name="label_cnt">
              <property name="text">
@@ -66,43 +91,56 @@
            </item>
           </layout>
          </item>
-         <item>
-          <widget class="QGroupBox" name="grp_device">
-           <property name="title">
-            <string>디바이스 종류</string>
-           </property>
-           <layout class="QHBoxLayout" name="horizontalLayout">
-            <item>
-             <widget class="QRadioButton" name="radio_both">
-              <property name="text">
-               <string>PC, Mobile</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QRadioButton" name="radio_pc">
-              <property name="text">
-               <string>PC</string>
-              </property>
-              <property name="checked">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QRadioButton" name="radio_mobile">
-              <property name="text">
-               <string>Mobile</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
         </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>128</width>
+           <height>10</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="grp_device">
+         <property name="title">
+          <string>디바이스 종류</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QRadioButton" name="radio_both">
+            <property name="text">
+             <string>PC, Mobile</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radio_pc">
+            <property name="text">
+             <string>PC</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radio_mobile">
+            <property name="text">
+             <string>Mobile</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <widget class="QPushButton" name="btn_start">
