@@ -78,14 +78,17 @@
            </item>
            <item>
             <widget class="QSpinBox" name="spin_cnt">
+             <property name="minimum">
+              <number>1</number>
+             </property>
              <property name="maximum">
               <number>9999</number>
              </property>
              <property name="singleStep">
-              <number>100</number>
+              <number>1</number>
              </property>
              <property name="value">
-              <number>100</number>
+              <number>1</number>
              </property>
             </widget>
            </item>

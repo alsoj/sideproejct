@@ -28,7 +28,7 @@ FILE_NAME = ''
 
 INPUT_FULL_FILE_NAME = ''
 INPUT_FILE_NAME = ''
-URL_LIST = ''
+URL_LIST = []
 IS_MULTI = False
 
 ROOT_URL = ''
@@ -41,7 +41,6 @@ LANDING_CLASS_DICT = {}
 LANDING_INFO_SET = set()
 DEVICE_LIST = []
 REPEAT_CNT = 0
-TARGET_URL = ''
 
 class Ad:
   def __init__(self, media, device, thumb, text, repeat_cnt, ad_cnt, landing_title, ad_url, landing_url):
@@ -112,9 +111,10 @@ class AdCrawler_Window(QMainWindow, form_class):
   def check_input_valid(self):
     global REPEAT_CNT
     REPEAT_CNT = self.spin_cnt.value()
-    global TARGET_URL
-    TARGET_URL = self.edit_url.text()
-    if REPEAT_CNT <= 0 or (len(TARGET_URL) == 0 and len(URL_LIST) == 0):
+    global URL_LIST
+    if len(URL_LIST) == 0:
+      URL_LIST.append(self.edit_url.text())
+    if REPEAT_CNT <= 0 or len(URL_LIST) == 0:
       self.set_log_text("필수 입력 값이 입력되지 않았습니다.")
       self.set_log_text("사이트 URL과 반복횟수를 확인 해주세요.")
       return False
@@ -142,9 +142,9 @@ class AdCrawler_Window(QMainWindow, form_class):
     create_excel()
     self.set_log_text(f"파일명 : {FILE_NAME}")
 
-    for TARGET_URL in URL_LIST:
+    for target_url in URL_LIST:
       # 전역 변수 세팅 및 초기화
-      set_global_variables(TARGET_URL)
+      set_global_variables(target_url)
 
       self.set_log_text(f"매체명 : {MEDIA_NAME}")
 
@@ -162,13 +162,13 @@ class AdCrawler_Window(QMainWindow, form_class):
         LANDING_CLASS_DICT.clear()
 
         browser = get_browser(self, device)
-        browser.set_page_load_timeout(10)
-        browser.get(TARGET_URL)
+        # browser.set_page_load_timeout(10)
+        browser.get(target_url)
 
         for i in range(1, REPEAT_CNT+1):
           try:
             set_crawl_init()  # 크롤링 정보 초기화
-            browser.get(TARGET_URL)
+            browser.get(target_url)
             for j in range(5):
               browser_scroll_down(browser)  # 브라우저 스크롤 다운
             crawl_ad(browser)  # 크롤링 진행(웹페이지에 존재하는 a 태그를 추출)
@@ -191,6 +191,7 @@ class AdCrawler_Window(QMainWindow, form_class):
                   LANDING_CLASS_DICT[landing_info['url']] = ad_class
 
           except Exception as e:
+            print("Main Thread 오류 : " + str(e))
             pass
           finally:
             self.set_log_text(f"{i}회 진행 완료")
