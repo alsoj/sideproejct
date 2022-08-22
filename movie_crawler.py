@@ -20,7 +20,7 @@ TEMP_MOVIE_SAVE_PATH = './output/'
 ############################################
 def set_chrome_driver(wired=False):
   chrome_options = webdriver.ChromeOptions()
-  chrome_options.add_argument("--headless")
+  # chrome_options.add_argument("--headless")
 
   if wired:
     driver = uc.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
@@ -136,9 +136,9 @@ def get_movie_info(browser, ep_site_url):
     browser.get(ep_site_url)
     movie_title = browser.title
     movie_title = movie_title.replace(":", "-")
-    option = browser.find_element(by=By.TAG_NAME, value='option')
-    movie_id = option.get_attribute('value').split('id=')[-1]
-    # movie_id = ep_site_url.split('/')[-2]
+    # option = browser.find_element(by=By.TAG_NAME, value='option')
+    # movie_id = option.get_attribute('value').split('id=')[-1]
+    movie_id = ep_site_url.split('/')[-2]
     print(movie_title, '/', movie_id)
 
     return movie_title, movie_id
@@ -162,7 +162,7 @@ def get_m3u8_url(browser, ep_site_url):
                 "referer": "https://kfani.me/",
               }
 
-    php_res = requests.get(php_url, headers = request_headers)
+    php_res = requests.get(php_url, headers=request_headers)
     soup_php = BeautifulSoup(php_res.text, "html.parser")
     m3u8_url = soup_php.select_one('source').attrs['src']
 
@@ -183,7 +183,14 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     print("영상 다운로드가 시작되었습니다 : ", f'{movie_title}.mp4')
     browser.get(ep_site_url)
 
-    browser.switch_to.frame('videoarea')
+    # browser.switch_to.frame('videoarea')
+    iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
+    player_idx = 0
+    for idx, iframe in enumerate(iframes):
+      if 'google' not in iframe.get_attribute('src'):
+        player_idx = idx
+    browser.switch_to.frame(player_idx)
+
     iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
     if len(iframes) > 0:
       browser.switch_to.frame(0)
