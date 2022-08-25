@@ -11,6 +11,7 @@ import undetected_chromedriver as uc
 import urllib
 import atexit
 import youtube_dl
+import re
 
 # 결과물 파일 저장 경로
 TEMP_MOVIE_SAVE_PATH = './output/'
@@ -127,6 +128,10 @@ def get_episode_list(browser, ani_site_url):
     print('에피소드 리스트 추출 시 오류가 발생했습니다')
     print(str(e)[:50])
 
+def get_movie_id(page_source):
+  p = re.compile('\d\d\d\d\d\dm\d')
+  result = p.findall(page_source)[0]
+  return result
 
 ############################################
 # 영상 기본 정보 추출
@@ -136,9 +141,10 @@ def get_movie_info(browser, ep_site_url):
     browser.get(ep_site_url)
     movie_title = browser.title
     movie_title = movie_title.replace(":", "-")
+    movie_id = get_movie_id(browser.page_source)
     # option = browser.find_element(by=By.TAG_NAME, value='option')
     # movie_id = option.get_attribute('value').split('id=')[-1]
-    movie_id = ep_site_url.split('/')[-2]
+    # movie_id = ep_site_url.split('/')[-2]
     print(movie_title, '/', movie_id)
 
     return movie_title, movie_id
@@ -146,6 +152,10 @@ def get_movie_info(browser, ep_site_url):
   except Exception as e:
     print('영상 기본 정보 추출 시 오류가 발생 했습니다 : ', e)
 
+
+def get_php_url(page_source):
+  return 'test'
+  # https: // ani1.app / player / index.php?data =366478m1
 
 ############################################
 # m3u8 형태 비디오 다운로드
@@ -183,19 +193,21 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
     print("영상 다운로드가 시작되었습니다 : ", f'{movie_title}.mp4')
     browser.get(ep_site_url)
 
-    # browser.switch_to.frame('videoarea')
-    iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
-    player_idx = 0
-    for idx, iframe in enumerate(iframes):
-      if 'google' not in iframe.get_attribute('src'):
-        player_idx = idx
-    browser.switch_to.frame(player_idx)
+    browser.switch_to.frame('videoarea')
+    # iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
+    # player_idx = 0
+    # for idx, iframe in enumerate(iframes):
+    #   if 'google' not in iframe.get_attribute('src'):
+    #     player_idx = idx
+    # browser.switch_to.frame(player_idx)
 
     iframes = browser.find_elements(by=By.TAG_NAME, value='iframe')
     if len(iframes) > 0:
       browser.switch_to.frame(0)
     video = browser.find_element(by=By.TAG_NAME, value='video')
     video_url = video.get_attribute("src")
+
+    # print("video_url : ", video_url)
 
     if video_url.startswith('blob'):
       m3u8_url = get_m3u8_url(browser, ep_site_url)
@@ -233,8 +245,11 @@ def download_movie(browser, ep_site_url, movie_title, MOVIE_SAVE_PATH):
 # 자막 다운로드
 ############################################
 def download_caption(movie_id, movie_title, MOVIE_SAVE_PATH):
-  try :
+  try:
     url_caption = f'https://kfani.me/s/{movie_id}.vtt'
+
+
+    print("url_caption : ", url_caption)
 
     request_headers = {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36",
