@@ -95,26 +95,29 @@ class MallCrawler(QMainWindow, form_class):
       i = 0
 
       for KEYWORD in KEYWORD_LIST:
-        self.log_text_browser.append("#############################################")
-        self.log_text_browser.append("크롤링 작업 시작, 키워드 : " + KEYWORD)
-        QApplication.processEvents()
+        try:
+          self.log_text_browser.append("#############################################")
+          self.log_text_browser.append("크롤링 작업 시작, 키워드 : " + KEYWORD)
+          QApplication.processEvents()
 
-        # print(SEARCH_URL.format(KEYWORD, PAGE))
-        global PAGE
-        PAGE = 1
+          # print(SEARCH_URL.format(KEYWORD, PAGE))
+          global PAGE
+          PAGE = 1
 
-        browser.get(SEARCH_URL.format(KEYWORD, PAGE))
-        progress = 'start'
+          browser.get(SEARCH_URL.format(KEYWORD, PAGE))
+          progress = 'start'
 
-        while (progress != 'end'):
-          go_mall_in_page(self, browser, KEYWORD)  # 쇼핑몰로 이동
-          progress = go_to_next(browser, KEYWORD)  # 다음페이지로 이동
+          while (progress != 'end'):
+            go_mall_in_page(self, browser, KEYWORD)  # 쇼핑몰로 이동
+            progress = go_to_next(browser, KEYWORD)  # 다음페이지로 이동
 
-        self.log_text_browser.append("크롤링 작업 종료, 키워드 : " + KEYWORD)
-        self.log_text_browser.append("#############################################")
-        i += 1
-        self.progress_bar.setValue(i)
-        QApplication.processEvents()
+          self.log_text_browser.append("크롤링 작업 종료, 키워드 : " + KEYWORD)
+          self.log_text_browser.append("#############################################")
+          i += 1
+          self.progress_bar.setValue(i)
+          QApplication.processEvents()
+        except Exception as e:
+          pass
 
     except Exception as e:
       self.log_text_browser.append("#############################################")
