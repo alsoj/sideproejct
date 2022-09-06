@@ -96,7 +96,7 @@ def execute_browser():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
     return browser
 
 def get_category_info(cate):

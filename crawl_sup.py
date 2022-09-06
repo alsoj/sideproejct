@@ -13,7 +13,7 @@ import crawl_config
 # 전역변수 세팅
 KEYWORD_LIST = ['정책','창업','대출']
 TAB_LIST = ['supportmeasures','businessinfo','notice'] #지원시책, 사업정보, 알림정보
-URL = 'https://www.sbiz.or.kr/sup/search/Search.do'
+URL = 'https://10.217.58.126:18882/sup/search/Search.do'
 TARGET_KEYWORD = ''
 TARGET_TAB = ''
 CRAWL_LIST = list(product(KEYWORD_LIST, TAB_LIST))
@@ -90,7 +90,8 @@ def execute_browser():
   options.add_argument("--disable-gpu")
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
-  browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+  # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
   return browser
 
 

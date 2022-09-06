@@ -8,7 +8,7 @@ import datetime
 import crawl_config
 
 # 전역변수 세팅
-BASE_URL = 'http://sbiznews.com/news/?menu=1&menuid=44&action=index'
+BASE_URL = 'http://10.217.58.126:18883/news/?menu=1&menuid=44&action=index'
 
 def delete_news():
   """
@@ -76,7 +76,7 @@ def execute_browser():
   options.add_argument("--disable-gpu")
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
-  browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
   return browser
 
 def get_today():
