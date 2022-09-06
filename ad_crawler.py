@@ -189,7 +189,6 @@ class AdCrawler_Window(QMainWindow, form_class):
                   ad_class = Ad(MEDIA_NAME, device, get_image(ad_info['image']), ad_info['text'], REPEAT_CNT, 1, landing_info['title'], ad_info['url'], landing_info['url'])
                   AD_CLASS_DICT[ad_info['url']] = ad_class
                   LANDING_CLASS_DICT[landing_info['url']] = ad_class
-
           except Exception as e:
             print("Main Thread 오류 : " + str(e))
             pass
@@ -235,15 +234,18 @@ def get_browser(self, device):
   return browser
 
 def browser_scroll_down(browser):
-  scroll_from = 0
-  scroll_to = 200
-  scroll_height = browser.execute_script("return document.body.scrollHeight")
-  sleep(1)
-  while (scroll_to < scroll_height):
-    browser.execute_script(f"window.scrollTo({scroll_from},{scroll_to})")
+  try:
+    scroll_from = 0
+    scroll_to = 200
     scroll_height = browser.execute_script("return document.body.scrollHeight")
-    scroll_from += 200
-    scroll_to += 200
+    sleep(1)
+    while (scroll_to < scroll_height):
+      browser.execute_script(f"window.scrollTo({scroll_from},{scroll_to})")
+      scroll_height = browser.execute_script("return document.body.scrollHeight")
+      scroll_from += 200
+      scroll_to += 200
+  except Exception as e:
+    print("browser_scroll_down 오류 : " + str(e))
 
 # 브라우저 Tab close
 def close_new_tabs(browser):
@@ -463,7 +465,7 @@ def get_landing_info(browser, ad_info):
     landing_url = browser.current_url
 
   except Exception as e:
-    print("get_landing_info 오류 " + e)
+    print("get_landing_info 오류 " + str(e))
     pass
 
   finally:
@@ -486,7 +488,7 @@ def get_image(image_url):
       if img.height < 15 or img.width < 15:
         img = ''
   except Exception as e:
-    print("get_image 오류 : " + e)
+    print("get_image 오류 : " + str(e))
     pass
 
   finally:
