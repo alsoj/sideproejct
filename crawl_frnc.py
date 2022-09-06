@@ -9,8 +9,8 @@ from time import sleep
 import crawl_config
 
 # 전역변수 세팅
-BASE_URL = 'https://franchise.ftc.go.kr'
-SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
+BASE_URL = 'https://10.217.58.126:18887'
+SEARCH_URL = 'https://10.217.58.126:18887/mnu/00013/program/userRqst/list.do'
 
 from enum import Enum
 class Category(Enum):
