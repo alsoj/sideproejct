@@ -197,7 +197,8 @@ def insert_sup_info(browser):
       temp_list.append(reg_dt)
       url = page.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
       if url.startswith('javascript'):
-        temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1])
+        # temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1])
+        temp_list.append('https://10.217.58.126:18882' + url.split('\'')[1])
       else:
         temp_list.append(url)
 
