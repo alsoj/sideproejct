@@ -3,6 +3,8 @@ import time
 import requests
 from bs4 import BeautifulSoup
 import telegram
+import urllib
+
 
 # moneys_keword = '이지운 기자'
 moneys_keword = '%C0%CC%C1%F6%BF%EE+%B1%E2%C0%DA'
@@ -10,6 +12,12 @@ fnnews_keyword1 = '최두선 기자'
 fnnews_keyword2 = '김민기 기자'
 etoday_keyword = '설경진 기자'
 asiae_keyword = '박형수 기자'
+
+# moneys_keword = '%C7%D1%B1%B9'
+# fnnews_keyword1 = '한국'
+# fnnews_keyword2 = '한국'
+# etoday_keyword = '한국'
+# asiae_keyword = '한국'
 
 moneys_search_url = f'https://moneys.mt.co.kr/search.html?kwd={moneys_keword}'
 fnnews_search_url1 = f'https://www.fnnews.com/search?search_txt={fnnews_keyword1}&page=0'
@@ -26,10 +34,7 @@ class Article:
         self.etoday_article = ''
         self.asiae_article = ''
 
-def send_telegram(message):
-    bot = telegram.Bot(token='5715918445:AAGJdIiik5Na3qoc498y-hKGe2Aw1cOFwe4')
-    chat_id = -1001719132749
-    bot.sendMessage(chat_id=chat_id, text=message)
+
 
 def get_moneys_article_url(search_url):
     moneys_res = requests.get(search_url)
@@ -106,4 +111,4 @@ if __name__ == "__main__":
             send_telegram(asiae_article)
             recent_article.asiae_article = asiae_article
 
-        time.sleep(600)
+        time.sleep(300)
