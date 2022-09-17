@@ -3,8 +3,6 @@ import time
 import requests
 from bs4 import BeautifulSoup
 import telegram
-import urllib
-
 
 # moneys_keword = '이지운 기자'
 moneys_keword = '%C0%CC%C1%F6%BF%EE+%B1%E2%C0%DA'
@@ -34,7 +32,10 @@ class Article:
         self.etoday_article = ''
         self.asiae_article = ''
 
-
+def send_telegram(message):
+    bot = telegram.Bot(token='5715918445:AAGJdIiik5Na3qoc498y-hKGe2Aw1cOFwe4')
+    chat_id = -1001719132749
+    bot.sendMessage(chat_id=chat_id, text=message)
 
 def get_moneys_article_url(search_url):
     moneys_res = requests.get(search_url)
