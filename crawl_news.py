@@ -8,7 +8,8 @@ import datetime
 import crawl_config
 
 # 전역변수 세팅
-BASE_URL = 'http://10.217.58.126:18883/news/?menu=1&menuid=44&action=index'
+# BASE_URL = 'http://10.217.58.126:18883/news/?menu=1&menuid=44&action=index'
+BASE_URL = 'http://sbiznews.com/news/?menu=1&menuid=44&action=index'
 
 def delete_news():
   """
@@ -32,10 +33,12 @@ def delete_news():
     cur.close()
 
   except (Exception, psycopg2.DatabaseError) as error:
+    print("delete_news() ERROR")
     print(error)
   finally:
     if conn is not None:
       conn.close()
+    print("delete_news() FINISH")
 
 def insert_news(params):
   """
@@ -60,10 +63,12 @@ def insert_news(params):
     cur.close()
 
   except (Exception, psycopg2.DatabaseError) as error:
+    print("insert_news() ERROR")
     print(error)
   finally:
     if conn is not None:
       conn.close()
+    print("insert_news() FINISH")
 
 def execute_browser():
   """
@@ -76,7 +81,8 @@ def execute_browser():
   options.add_argument("--disable-gpu")
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
-  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
+  # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+  browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
   return browser
 
 def get_today():
@@ -111,7 +117,7 @@ def get_crawl_target(browser, today):
       a_tag = td.find_elements(by=By.TAG_NAME, value='a')
       if isToday and len(a_tag) > 0:
         crawl_list.append(a_tag[0].get_attribute('href'))
-
+  print(f"get_crawl_target(), target count : {len(crawl_list)}")
   return crawl_list
 
 def crawl_detail_page(browser, crawl_target):
@@ -125,11 +131,11 @@ def crawl_detail_page(browser, crawl_target):
   contents = browser.find_element(by=By.ID, value='ContentsLayertext').text
   url = browser.current_url
   today = get_today()
-
+  print(f"crawl_detail_page() : {title}")
   insert_news([title, contents, 'news', today, url])
 
 if __name__ == "__main__":
-  print("crawl_news.py 실행")
+  print("crawl_news.py START")
   browser = execute_browser()
 
   try:
@@ -142,8 +148,8 @@ if __name__ == "__main__":
       crawl_detail_page(browser, crawl_target)
 
   except Exception as e:
-    print("crawl_news.py 오류")
+    print("crawl_news.py ERROR")
     print(e)
   finally:
     browser.quit()
-    print("crawl_news.py 종료")
+    print("crawl_news.py FINISH")

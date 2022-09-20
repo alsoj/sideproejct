@@ -9,8 +9,10 @@ from time import sleep
 import crawl_config
 
 # 전역변수 세팅
-BASE_URL = 'https://10.217.58.126:18887'
-SEARCH_URL = 'https://10.217.58.126:18887/mnu/00013/program/userRqst/list.do'
+# BASE_URL = 'https://10.217.58.126:18887'
+# SEARCH_URL = 'https://10.217.58.126:18887/mnu/00013/program/userRqst/list.do'
+BASE_URL = 'https://franchise.ftc.go.kr'
+SEARCH_URL = 'https://franchise.ftc.go.kr/mnu/00013/program/userRqst/list.do'
 
 from enum import Enum
 class Category(Enum):
@@ -80,10 +82,12 @@ def insert_frnc(params):
         cur.close()
 
     except (Exception, psycopg2.DatabaseError) as error:
+        print("insert_frnc() ERROR")
         print(error)
     finally:
         if conn is not None:
             conn.close()
+        print("insert_frnc() FINISH")
 
 def execute_browser():
     """
@@ -96,7 +100,8 @@ def execute_browser():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
+    # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
     return browser
 
 def get_category_info(cate):
@@ -178,18 +183,21 @@ def get_max_id():
         max_id = cur.fetchone()[0]
 
     except (Exception, psycopg2.DatabaseError) as error:
+        print(f"get_max_id() ERROR")
         print(error)
     finally:
         if conn is not None:
             conn.close()
+        print(f"get_max_id() FINISH, max id : {max_id}")
 
     return max_id
 
 if __name__ == "__main__":
-    print("crawl_frnc.py 실행")
+    print("crawl_frnc.py START")
     browser = execute_browser()
     browser.get(SEARCH_URL)
     goNext = True
+    max_id = int(get_max_id())
     try:
         while(goNext):
             tbody = browser.find_element(by=By.TAG_NAME, value='tbody')
@@ -199,8 +207,9 @@ if __name__ == "__main__":
             for tr in trs:
                 id, category, detail_url = get_list_info(tr)
 
-                if int(id) > int(get_max_id()):
+                if int(id) > max_id:
                     if len(category) > 0:
+                        print(f"id : {id}, category : {category} CRAWLING START")
                         browser.switch_to.new_window('tab')
                         browser.get(BASE_URL + detail_url)
                         fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee = get_detail_info(browser)
@@ -214,12 +223,12 @@ if __name__ == "__main__":
 
             if hasNew:
                 goNext = go_to_next(browser)
-            else :
+            else:
                 goNext = False
 
     except Exception as e:
-        print("crawl_frnc.py 오류")
+        print("crawl_frnc.py ERROR")
         print(e)
     finally:
         browser.quit()
-        print("crawl_frnc.py 종료")
+        print("crawl_frnc.py FINISH")
