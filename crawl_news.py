@@ -8,8 +8,9 @@ import datetime
 import crawl_config
 
 # 전역변수 세팅
-# BASE_URL = 'http://10.217.58.126:18883/news/?menu=1&menuid=44&action=index'
-BASE_URL = 'http://sbiznews.com/news/?menu=1&menuid=44&action=index'
+# BASE_URL = 'http://sbiznews.com/news/?menu=1&menuid=44&action=index' # 외부 오픈
+# BASE_URL = 'http://10.217.58.126:18883/news/?menu=1&menuid=44&action=index' # 개발계
+BASE_URL = 'http://211.252.121.132:18883/news/?menu=1&menuid=44&action=index' # 운영계
 
 def delete_news():
   """
@@ -82,7 +83,8 @@ def execute_browser():
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
   # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-  browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
+  # browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
+  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
   return browser
 
 def get_today():

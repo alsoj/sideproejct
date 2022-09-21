@@ -11,9 +11,12 @@ import datetime
 import crawl_config
 
 # 전역변수 세팅
+URL = 'https://www.sbiz.or.kr/sup/search/Search.do' # 외부망
+# URL = 'https://10.217.58.126:18882/sup/search/Search.do' # 개발계
+# URL = 'https://211.252.121.132:18882/sup/search/Search.do'  # 운영계
+
 KEYWORD_LIST = ['정책','창업','대출']
 TAB_LIST = ['supportmeasures','businessinfo','notice'] #지원시책, 사업정보, 알림정보
-URL = 'https://10.217.58.126:18882/sup/search/Search.do'
 TARGET_KEYWORD = ''
 TARGET_TAB = ''
 CRAWL_LIST = list(product(KEYWORD_LIST, TAB_LIST))
@@ -91,7 +94,8 @@ def execute_browser():
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
   # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
+  browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options) # 외부망
+  # browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options) # 개발,운영
   return browser
 
 
@@ -251,7 +255,7 @@ def get_today():
   return datetime.datetime.now().strftime('%Y%m%d')
 
 if __name__ == "__main__":
-  print("crawl_sup.py 실행")
+  print("crawl_sup.py START")
   browser = execute_browser()
 
   try:
@@ -260,7 +264,7 @@ if __name__ == "__main__":
     for task in CRAWL_LIST:
       TARGET_KEYWORD, TARGET_TAB = task
 
-      print("검색어:", TARGET_KEYWORD, " | 탭 :",TARGET_TAB)
+      print("KEYWORD :", TARGET_KEYWORD, " | TAB :",TARGET_TAB)
 
       browser.get(URL)
       search_keyword(browser, TARGET_KEYWORD)
@@ -277,8 +281,8 @@ if __name__ == "__main__":
           print("while 수행 중 오류 발생 : " + str(e))
 
   except Exception as e:
-    print("crawl_sup.py 오류")
+    print("crawl_sup.py ERROR")
     print(e)
   finally:
     browser.quit()
-    print("crawl_sup.py 종료")
+    print("crawl_sup.py FINISH")

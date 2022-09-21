@@ -7,10 +7,19 @@ import psycopg2
 import crawl_config
 
 # 전역변수 세팅
+
+# 외부망
 # BASE_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN051M/page.do'
 # DETAIL_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN052M/page.do?bltwtrSeq='
-BASE_URL = 'http://10.217.58.126:18881/ols/man/SMAN051M/page.do'
-DETAIL_URL = 'http://10.217.58.126:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
+
+# 개발계
+# BASE_URL = 'http://10.217.58.126:18881/ols/man/SMAN051M/page.do'
+# DETAIL_URL = 'http://10.217.58.126:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
+
+# 운영계
+BASE_URL = 'http://211.252.121.132:18881/ols/man/SMAN051M/page.do'
+DETAIL_URL = 'http://211.252.121.132:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
+
 category = {
     '서비스안내': 'service'
     , '대출정보': 'loans'
@@ -136,7 +145,7 @@ def crawl_detail_page(browser, max_id, recent_id) :
       continue
 
 if __name__ == "__main__":
-  print("crawl_ols.py 실행")
+  print("crawl_ols.py START")
   browser = execute_browser()
 
   try:
@@ -145,8 +154,8 @@ if __name__ == "__main__":
     crawl_detail_page(browser, max_id, recent_id)
 
   except Exception as e:
-    print("crawl_ols.py 오류")
+    print("crawl_ols.py ERROR")
     print(e)
   finally:
     browser.quit()
-    print("crawl_ols.py 종료")
+    print("crawl_ols.py FINISH")
