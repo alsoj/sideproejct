@@ -203,6 +203,7 @@ if __name__ == "__main__":
     print("crawl_frnc.py START")
     browser = execute_browser()
     browser.get(SEARCH_URL)
+    sleep(5)
     goNext = True
     max_id = int(get_max_id())
     try:
@@ -219,6 +220,7 @@ if __name__ == "__main__":
                         print(f"id : {id}, category : {category} CRAWLING START")
                         browser.switch_to.new_window('tab')
                         browser.get(BASE_URL + detail_url)
+                        sleep(5)
                         fran_fee, edu_fee, deposit_fee, etc_fee, interior_fee = get_detail_info(browser)
                         browser.close()
                         browser.switch_to.window(browser.window_handles[0])

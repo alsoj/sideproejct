@@ -9,11 +9,12 @@ from time import sleep
 import datetime
 
 import crawl_config
+import requests
 
 # 전역변수 세팅
-URL = 'https://www.sbiz.or.kr/sup/search/Search.do' # 외부망
+# URL = 'http://www.sbiz.or.kr/sup/search/Search.do' # 외부망
 # URL = 'https://10.217.58.126:18882/sup/search/Search.do' # 개발계
-# URL = 'https://211.252.121.132:18882/sup/search/Search.do'  # 운영계
+URL = 'https://211.252.121.132:18882/sup/search/Search.do'  # 운영계
 
 KEYWORD_LIST = ['정책','창업','대출']
 TAB_LIST = ['supportmeasures','businessinfo','notice'] #지원시책, 사업정보, 알림정보
@@ -21,9 +22,9 @@ TARGET_KEYWORD = ''
 TARGET_TAB = ''
 CRAWL_LIST = list(product(KEYWORD_LIST, TAB_LIST))
 category = {
-    '정책' : 'policy'
-   ,'창업' : 'startup'
-   ,'대출' : 'loans'
+    '정책': 'policy'
+   ,'창업': 'startup'
+   ,'대출': 'loans'
 }
 
 def delete_sup():
@@ -77,10 +78,12 @@ def insert_sup(params):
     cur.close()
 
   except (Exception, psycopg2.DatabaseError) as error:
+    print("insert_sup() ERROR")
     print(error)
   finally:
     if conn is not None:
       conn.close()
+    print("insert_sup() FINISH")
 
 def execute_browser():
   """
@@ -88,14 +91,14 @@ def execute_browser():
   :return: 크롬 브라우저
   """
   options = webdriver.ChromeOptions()
-  options.add_argument("--headless")
-  options.add_argument("--no-sandbox")
-  options.add_argument("--disable-gpu")
-  options.add_argument("--single-process")
-  options.add_argument("--disable-dev-shm-usage")
+  options.add_argument("headless")
+  options.add_argument("no-sandbox")
+  options.add_argument("disable-gpu")
+  options.add_argument("single-process")
+  options.add_argument("disable-dev-shm-usage")
   # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-  browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options) # 외부망
-  # browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options) # 개발,운영
+  # browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options) # 외부망
+  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)  # 개발,운영
   return browser
 
 
@@ -110,7 +113,7 @@ def search_keyword(browser, keyword):
     input_search = browser.find_element(by=By.ID, value='searchQuery')
     input_search.send_keys(keyword)
     input_search.submit()
-
+    print("search_keyword :", keyword)
   except Exception as e:
     print("search_keyword 실행 중 오류 발생" + str(e))
 
@@ -127,6 +130,7 @@ def select_tab(browser, tab):
     for selected_tab in tab_list:
       if tab in selected_tab.get_attribute('href'):
         selected_tab.click()
+        print("select_tab :", tab)
         break
 
   except Exception as e:
@@ -195,14 +199,16 @@ def insert_sup_info(browser):
       # 오늘 날짜에 해당하는 기사만 크롤링
       reg_dt = page.find_element(by=By.CLASS_NAME, value='bl_date').text.split(':')[1].strip()
       if reg_dt.replace(".","") != get_today():
+        print("not today, pass")
         return False
 
       temp_list.append(page.find_element(by=By.CLASS_NAME, value='bl_source').text.split(':')[1].strip())
       temp_list.append(reg_dt)
       url = page.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
       if url.startswith('javascript'):
-        # temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1])
-        temp_list.append('https://10.217.58.126:18882' + url.split('\'')[1])
+        # temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1]) # 외부망
+        # temp_list.append('https://10.217.58.126:18882' + url.split('\'')[1]) # 개발계
+        temp_list.append('https://211.252.121.132:18882' + url.split('\'')[1]) # 운영계
       else:
         temp_list.append(url)
 
@@ -211,8 +217,8 @@ def insert_sup_info(browser):
       browser.execute_script("arguments[0].click();", a_tag)
       sleep(1)
       title, content = get_detail_info(browser)
-
       temp_list = [title, content, category[TARGET_KEYWORD]] + temp_list
+      print("insert_sup_info :", title)
       insert_sup(temp_list)
 
   except Exception as e:
@@ -257,7 +263,7 @@ def get_today():
 if __name__ == "__main__":
   print("crawl_sup.py START")
   browser = execute_browser()
-
+  browser.set_page_load_timeout(1200)
   try:
     delete_sup() # 당일자 데이터 삭제 후 크롤링 진행
 
@@ -265,8 +271,21 @@ if __name__ == "__main__":
       TARGET_KEYWORD, TARGET_TAB = task
 
       print("KEYWORD :", TARGET_KEYWORD, " | TAB :",TARGET_TAB)
-
+      # print("before get current_url=", browser.current_url)
+      # print("=====================================")
+      # print("URL :", URL)
+      # res = requests.get(URL)
+      # print("res=", res)
+      # print("res.text=", res.text)
+      print("=====================================")
       browser.get(URL)
+      print("after get current_url=", browser.current_url)
+      print("=====================================")
+      print(browser.title)
+      print("=====================================")
+      print(browser.page_source)
+      print("=====================================")
+
       search_keyword(browser, TARGET_KEYWORD)
       select_tab(browser, TARGET_TAB)
 
