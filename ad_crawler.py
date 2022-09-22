@@ -1,5 +1,8 @@
 import sys
+import time
+
 from PyQt6.QtWidgets import *
+from PyQt6.QtCore import *
 from PyQt6 import uic
 
 # 어플리케이션 패키지
@@ -162,7 +165,7 @@ class AdCrawler_Window(QMainWindow, form_class):
         LANDING_CLASS_DICT.clear()
 
         browser = get_browser(self, device)
-        # browser.set_page_load_timeout(10)
+        browser.set_page_load_timeout(60)
         browser.get(target_url)
 
         for i in range(1, REPEAT_CNT+1):
@@ -203,6 +206,7 @@ class AdCrawler_Window(QMainWindow, form_class):
         self.set_log_text("#######################################")
         self.set_log_text("크롤링 작업 완료_" + datetime.datetime.now().strftime("%Y년%m월%d일 %H시%M분"))
         self.set_log_text("#######################################")
+
 
 # 추출 URL 리스트 추출
 def get_url_list(file_name):
@@ -380,6 +384,7 @@ def get_media_name(target_url):
   media_name = media_name.replace(".net", "")
   media_name = media_name.replace("m.", "")
   media_name = media_name.replace("mobile.", "")
+  media_name = media_name.replace("news.", "")
 
   return media_name
 

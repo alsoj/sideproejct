@@ -23,7 +23,8 @@ asiae_search_url = f'https://www.asiae.co.kr/search/index.htm'
 asiae_data = {'kwd': asiae_keyword, 'type': 'all', 'sort': 'NEWDATE'}
 
 # 전역변수 - API 토큰
-
+telgram_api_token = '5645768266:AAFNGWyAGXQwXKB0gdCr-P4tOugCnQ8b8cw'
+telegram_chat_id = -1001701299096
 
 # UI영역
 form_class = uic.loadUiType("telegram_news_bot.ui")[0]
