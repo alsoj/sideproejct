@@ -199,7 +199,7 @@ def insert_sup_info(browser):
       # 오늘 날짜에 해당하는 기사만 크롤링
       reg_dt = page.find_element(by=By.CLASS_NAME, value='bl_date').text.split(':')[1].strip()
       if reg_dt.replace(".","") != get_today():
-        print("not today, pass")
+        print("not today's article : pass")
         return False
 
       temp_list.append(page.find_element(by=By.CLASS_NAME, value='bl_source').text.split(':')[1].strip())
@@ -263,28 +263,16 @@ def get_today():
 if __name__ == "__main__":
   print("crawl_sup.py START")
   browser = execute_browser()
-  browser.set_page_load_timeout(1200)
+  browser.set_page_load_timeout(3600)
   try:
     delete_sup() # 당일자 데이터 삭제 후 크롤링 진행
 
     for task in CRAWL_LIST:
       TARGET_KEYWORD, TARGET_TAB = task
 
+      print("=================================")
       print("KEYWORD :", TARGET_KEYWORD, " | TAB :",TARGET_TAB)
-      # print("before get current_url=", browser.current_url)
-      # print("=====================================")
-      # print("URL :", URL)
-      # res = requests.get(URL)
-      # print("res=", res)
-      # print("res.text=", res.text)
-      print("=====================================")
       browser.get(URL)
-      print("after get current_url=", browser.current_url)
-      print("=====================================")
-      print(browser.title)
-      print("=====================================")
-      print(browser.page_source)
-      print("=====================================")
 
       search_keyword(browser, TARGET_KEYWORD)
       select_tab(browser, TARGET_TAB)
