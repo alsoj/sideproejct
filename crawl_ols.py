@@ -113,6 +113,13 @@ def get_max_id():
   return max_id
 
 def crawl_detail_page(browser, max_id, recent_id) :
+  """
+  상세 페이지 크롤링
+  :param browser: 웹 드라이버
+  :param max_id: 저장된 최신 id
+  :param recent_id: 크롤링 최신 id
+  :return:
+  """
   for i in range(max_id + 1, recent_id + 1):
     try:
       title = ''
@@ -126,16 +133,7 @@ def crawl_detail_page(browser, max_id, recent_id) :
       detail = browser.find_element(by=By.CLASS_NAME, value='board_view')
       title = detail.find_element(by=By.CLASS_NAME, value='fl_l').text
 
-      detail_infos = detail.find_element(by=By.CLASS_NAME, value='bvt_class').find_elements(by=By.TAG_NAME, value='li')
-      for detail_info in detail_infos:
-        key = detail_info.text
-        value = detail_info.text.split(':')[-1]
-        if '구분' in key:
-          gb = category[value]
-        elif '등록일' in key:
-          reg_dt = value
-        elif '조회수' in key:
-          view_cnt = value
+      gb, reg_dt, view_cnt = get_detail_value(detail)
 
       content = detail.find_element(by=By.ID, value='cntnDiv').text
       insert_ols([str(i), title, gb, reg_dt, content, view_cnt, url])
@@ -143,6 +141,30 @@ def crawl_detail_page(browser, max_id, recent_id) :
     except Exception as e:
       print('없는 페이지 pass' + str(i))
       continue
+
+def get_detail_value(detail):
+  """
+  디테일에서 구분, 등록일, 조회수 추출
+  :param detail: 디테일 컴포넌트
+  :return: 구분, 등록일, 조회수
+  """
+  gb = ''
+  reg_dt = ''
+  view_cnt = ''
+
+  detail_infos = detail.find_element(by=By.CLASS_NAME, value='bvt_class').find_elements(by=By.TAG_NAME, value='li')
+  for detail_info in detail_infos:
+    key = detail_info.text
+    value = detail_info.text.split(':')[-1]
+    if '구분' in key:
+      gb = category[value]
+    elif '등록일' in key:
+      reg_dt = value
+    elif '조회수' in key:
+      view_cnt = value
+
+  return gb, reg_dt, view_cnt
+
 
 if __name__ == "__main__":
   print("crawl_ols.py START")

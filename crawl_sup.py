@@ -136,6 +136,50 @@ def select_tab(browser, tab):
   except Exception as e:
     print("select_tab 실행 중 오류 발생 : " + str(e))
 
+def get_title_and_content_by_tab(browser, retries):
+  """
+  탭에 따른 title과 content 조회
+  :param browser: 웹 드라이버
+  :return: retries, title, content
+  """
+  title = ''
+  content = ''
+  try:
+    global TARGET_TAB
+    if TARGET_TAB == 'supportmeasures':
+      browser.switch_to.window(window_name=browser.window_handles[-1])
+      # title = WebDriverWait(browser, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
+      title = browser.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
+      content = browser.find_element(by=By.CLASS_NAME, value='bv_cp').text
+
+      browser.close()
+      browser.switch_to.window(window_name=browser.window_handles[0])
+
+    elif TARGET_TAB == 'businessinfo':
+      popup = browser.find_element(by=By.ID, value='layer_pop')
+      # title = WebDriverWait(popup, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
+      title = popup.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
+      content = popup.find_element(by=By.CLASS_NAME, value='bv_c').text
+      popup.find_element(by=By.CLASS_NAME, value='closeBtn').click()
+
+    elif TARGET_TAB == 'notice':
+      browser.switch_to.window(window_name=browser.window_handles[-1])
+      # title = WebDriverWait(browser, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
+      title = browser.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
+      content = browser.find_element(by=By.CLASS_NAME, value='bv_c').text
+
+      browser.close()
+      browser.switch_to.window(window_name=browser.window_handles[0])
+
+    retries = 0
+
+  except Exception as e:
+    print(e)
+    retries = retries - 1
+    sleep(3)
+
+  return retries, title, content
+
 def get_detail_info(browser):
   """
   상세 페이지 조회
@@ -146,41 +190,8 @@ def get_detail_info(browser):
   content = ''
 
   retries = 3
-  while (retries > 0):
-    try:
-      global TARGET_TAB
-      if TARGET_TAB == 'supportmeasures':
-        browser.switch_to.window(window_name=browser.window_handles[-1])
-        # title = WebDriverWait(browser, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
-        title = browser.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
-        content = browser.find_element(by=By.CLASS_NAME, value='bv_cp').text
-
-        browser.close()
-        browser.switch_to.window(window_name=browser.window_handles[0])
-
-      elif TARGET_TAB == 'businessinfo':
-        popup = browser.find_element(by=By.ID, value='layer_pop')
-        # title = WebDriverWait(popup, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
-        title = popup.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
-        content = popup.find_element(by=By.CLASS_NAME, value='bv_c').text
-        popup.find_element(by=By.CLASS_NAME, value='closeBtn').click()
-
-      elif TARGET_TAB == 'notice':
-        browser.switch_to.window(window_name=browser.window_handles[-1])
-        # title = WebDriverWait(browser, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "fl_l"))).find_element(by=By.TAG_NAME, value='p').text
-        title = browser.find_element(by=By.CLASS_NAME, value='fl_l').find_element(by=By.TAG_NAME, value='p').text
-        content = browser.find_element(by=By.CLASS_NAME, value='bv_c').text
-
-        browser.close()
-        browser.switch_to.window(window_name=browser.window_handles[0])
-
-      break
-
-    except Exception as e:
-      print(e)
-      retries = retries - 1
-      sleep(3)
-      continue
+  while retries > 0:
+    retries, title, content = get_title_and_content_by_tab(browser, retries)
 
   return title, content
 
@@ -260,6 +271,23 @@ def get_today():
   """
   return datetime.datetime.now().strftime('%Y%m%d')
 
+def start_crawl(browser, TARGET_KEYWORD):
+  """
+  실제 크롤링 작업 진행
+  :param browser: 웹 드라이버
+  :param TARGET_KEYWORD: 타겟 키워드
+  """
+  go = True
+  while (go):
+    try:
+      if insert_sup_info(browser) == False:  # 오늘 일자만 크롤링
+        go = False
+      else:
+        go = go_next_page(browser, TARGET_KEYWORD)
+    except Exception as e:
+      print("while 수행 중 오류 발생 : " + str(e))
+
+
 if __name__ == "__main__":
   print("crawl_sup.py START")
   browser = execute_browser()
@@ -276,17 +304,7 @@ if __name__ == "__main__":
 
       search_keyword(browser, TARGET_KEYWORD)
       select_tab(browser, TARGET_TAB)
-
-      go = True
-      while (go):
-        try:
-          if insert_sup_info(browser) == False : # 오늘 일자만 크롤링
-            go = False
-          else :
-            go = go_next_page(browser, TARGET_KEYWORD)
-        except Exception as e:
-          print("while 수행 중 오류 발생 : " + str(e))
-
+      start_crawl(browser, TARGET_KEYWORD)
   except Exception as e:
     print("crawl_sup.py ERROR")
     print(e)
