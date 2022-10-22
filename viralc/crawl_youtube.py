@@ -2,7 +2,7 @@ import googleapiclient.discovery
 import googleapiclient.errors
 
 import pymysql
-import config
+import viralc_config
 
 def get_db_connection():
     """
@@ -11,8 +11,8 @@ def get_db_connection():
     """
     return pymysql.connect(host=config.DATABASE_CONFIG['host'],
                            user=config.DATABASE_CONFIG['user'],
-                           password=config.DATABASE_CONFIG['password'],
-                           db=config.DATABASE_CONFIG['dbname'],
+                           password=viralc_config.DATABASE_CONFIG['password'],
+                           db=viralc_config.DATABASE_CONFIG['dbname'],
                            charset='utf8')
 
 
@@ -37,9 +37,20 @@ def get_crawling_target(con):
 
 def merge_crawl_result(con, result):
     cur = con.cursor()
-    sql = "INSERT INTO tb_content_crawling " \
-          "(content_url, sns_type, empathy, comment, followers, pc_view_cnt) " \
-          "VALUES (%(content_url)s, 'Y', %(like_count)s, %(comment_count)s, %(subscriber_count)s, %(view_count)s);"
+    sql = \
+        """
+        INSERT INTO tb_content_crawling
+        (content_url, sns_type, empathy, comment, followers, pc_view_cnt, insert_datetime) 
+        VALUES
+        (%(content_url)s, 'Y', %(like_count)s, %(comment_count)s, %(subscriber_count)s, %(view_count)s, now())
+        ON DUPLICATE KEY UPDATE
+        empathy = %(like_count)s,
+        comment = %(comment_count)s,
+        followers = %(subscriber_count)s,
+        pc_view_cnt = %(view_count)s,
+        update_datetime = now()
+        """
+
     cur.execute(sql, result)
     con.commit()
 
@@ -49,8 +60,8 @@ def get_youtube_info(video_id):
     :param: 비디오 ID
     :return: 좋아요, 댓글, 구독자, 조회 수
     """
-    youtube = googleapiclient.discovery.build(config.YOUTUBE_API_CONFIG['NAME'], config.YOUTUBE_API_CONFIG['VERSION'],
-                                              developerKey=config.YOUTUBE_API_CONFIG['KEY'])
+    youtube = googleapiclient.discovery.build(config.YOUTUBE_API_CONFIG['NAME'], viralc_config.YOUTUBE_API_CONFIG['VERSION'],
+                                              developerKey=viralc_config.YOUTUBE_API_CONFIG['KEY'])
 
     # 영상 정보 추출
     request = youtube.videos().list(
@@ -87,6 +98,8 @@ if __name__ == "__main__":
     for url in url_list:
         result = {'content_url': url}
 
+        if url.strip()[-1] == "/":
+            url = url[:-1]
         video_id = url.split("/")[-1]  # ID 추출
 
         # 크롤링 진행
