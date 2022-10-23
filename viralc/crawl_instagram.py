@@ -4,26 +4,7 @@ from time import sleep
 import json
 
 import viralc_config
-from viralc import viralc_common
-
-
-def merge_crawl_result(con, result):
-    cur = con.cursor()
-    sql = \
-        """
-        INSERT INTO tb_content_crawling
-        (content_url, sns_type, empathy, comment, followers, insert_datetime) 
-        VALUES
-        (%(content_url)s, 'I', %(like_count)s, %(comment_count)s, %(follower_count)s, now())
-        ON DUPLICATE KEY UPDATE
-        empathy = %(like_count)s,
-        comment = %(comment_count)s,
-        followers = %(follower_count)s,        
-        update_datetime = now()
-        """
-
-    cur.execute(sql, result)
-    con.commit()
+import viralc_common
 
 
 def login_instagram(browser, id, password):
@@ -120,27 +101,34 @@ if __name__ == "__main__":
 
     # 대상 조회(DB)
     url_list = viralc_common.get_crawling_target(con, "I")
+    print(f"인스타그램 크롤링 대상 : {len(url_list)}건")
 
     browser = viralc_common.get_selenium_wire()
     browser_login = viralc_common.get_selenium()
     try:
-        login_reuslt = login_instagram(browser_login, viralc_config.INSTAGRAM_CONFIG['LOGIN_ID'], viralc_config.INSTAGRAM_CONFIG['LOGIN_PW'])
+        login_id = viralc_config.INSTAGRAM_CONFIG['LOGIN_ID']
+        login_reuslt = login_instagram(browser_login, login_id, viralc_config.INSTAGRAM_CONFIG['LOGIN_PW'])
         if login_reuslt != "OK":
-            print("인스타그램 로그인에 실패했습니다.")
+            print(f"인스타그램 로그인에 실패했습니다. 계정 : {login_id}")
             exit()
+        else:
+            print(f"인스타그램 로그인에 성공했습니다. 계정 : {login_id}")
 
         for url in url_list:
-            result = {'content_url': url}
+            result = viralc_common.get_reuslt_dict()
+            result['content_url'] = url
+            result['sns_type'] = "I"
+
             post_id = viralc_common.get_content_id(url)
 
             # 크롤링 진행
             like_count, comment_count, follower_count = get_instagram_info(browser, browser_login, post_id)
-            result['like_count'] = like_count
-            result['comment_count'] = comment_count
-            result['follower_count'] = follower_count
+            result['empathy'] = like_count
+            result['comment'] = comment_count
+            result['followers'] = follower_count
 
             # 대상 업데이트(DB)
-            merge_crawl_result(con, result)
+            viralc_common.merge_crawl_result(con, result)
     except Exception as e:
         print(e)
     finally:

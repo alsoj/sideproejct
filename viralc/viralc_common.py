@@ -6,6 +6,11 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from seleniumwire import webdriver as webdriver_wire
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+
 
 def get_db_connection():
     """
@@ -50,6 +55,40 @@ def get_crawling_target(con, type):
         url_list.append(row[0])
     return url_list
 
+
+def get_reuslt_dict():
+    result = {
+        'content_url': '',
+        'sns_type': '',
+        'empathy': '',
+        'comment': '',
+        'followers': '',
+        'pc_view_cnt': '',
+        'mo_view_cnt': ''
+    }
+    return result
+
+
+def merge_crawl_result(con, result):
+    cur = con.cursor()
+    sql = \
+        """
+        INSERT INTO tb_content_crawling
+        (content_url, sns_type, empathy, comment, followers, pc_view_cnt, mo_view_cnt, insert_datetime) 
+        VALUES
+        (%(content_url)s, %(sns_type)s, %(empathy)s, %(comment)s, %(followers)s, %(pc_view_cnt)s, %(mo_view_cnt)s, now())
+        ON DUPLICATE KEY UPDATE
+        empathy = %(empathy)s,
+        comment = %(comment)s,
+        followers = %(followers)s,
+        pc_view_cnt = %(pc_view_cnt)s,
+        mo_view_cnt = %(mo_view_cnt)s,
+        update_datetime = now()
+        """
+
+    cur.execute(sql, result)
+    con.commit()
+
 def get_content_id(content_url):
     """
     URL에서 각 플랫폼별 content ID 추출
@@ -72,8 +111,8 @@ def get_selenium_wire():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver_wire.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    # browser = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
+    browser = webdriver_wire.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
+    # browser = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
     return browser
 
 def get_selenium():
@@ -87,6 +126,6 @@ def get_selenium():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    # browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
+    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
+    # browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
     return browser
