@@ -1,41 +1,11 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from seleniumwire import webdriver as webdriver_wire
-from seleniumwire.utils import decode
-from selenium.webdriver.common.keys import Keys
 
 from time import sleep
 import json
 
-import pymysql
 import viralc_config
+from viralc import viralc_common
 
-
-
-
-def get_crawling_target(con):
-    """
-    크롤링 대상 조회
-    :param DB Connection
-    :return: 대상 URL 리스트
-    """
-
-    cur = con.cursor()
-    sql = \
-        """
-        SELECT content_url
-        FROM tb_content_keyword
-        WHERE content_url LIKE '%instagram%';
-        """
-    cur.execute(sql)
-    rows = cur.fetchall()
-
-    url_list = []
-    for row in rows:
-        url_list.append(row[0])
-    return url_list
 
 def merge_crawl_result(con, result):
     cur = con.cursor()
@@ -72,7 +42,7 @@ def login_instagram(browser, id, password):
     inputs[0].send_keys(id)
     inputs[1].send_keys(password)
     inputs[1].submit()
-    sleep(3)
+    sleep(10)
 
     if '잘못된 비밀번호' in browser.page_source:
         return 'PWERR'
@@ -146,25 +116,22 @@ if __name__ == "__main__":
     print("crawl_instagram.py 실행")
 
     # DB 연결
-    con = get_db_connection()
+    con = viralc_common.get_db_connection()
 
     # 대상 조회(DB)
-    url_list = get_crawling_target(con)
+    url_list = viralc_common.get_crawling_target(con, "I")
 
-    browser = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac')
-    browser_login = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac')
+    browser = viralc_common.get_selenium_wire()
+    browser_login = viralc_common.get_selenium()
     try:
-        login_reuslt = login_instagram(browser_login, config.INSTAGRAM_CONFIG['LOGIN_ID'], config.INSTAGRAM_CONFIG['LOGIN_PW'])
+        login_reuslt = login_instagram(browser_login, viralc_config.INSTAGRAM_CONFIG['LOGIN_ID'], viralc_config.INSTAGRAM_CONFIG['LOGIN_PW'])
         if login_reuslt != "OK":
             print("인스타그램 로그인에 실패했습니다.")
             exit()
 
         for url in url_list:
             result = {'content_url': url}
-
-            if url.strip()[-1] == "/":
-                url = url[:-1]
-            post_id = url.split("/")[-1]  # ID 추출
+            post_id = viralc_common.get_content_id(url)
 
             # 크롤링 진행
             like_count, comment_count, follower_count = get_instagram_info(browser, browser_login, post_id)
