@@ -3,6 +3,9 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6 import uic
 
+import logging
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
 from time import sleep, time
 import requests
 from datetime import datetime
@@ -33,7 +36,7 @@ class CoinpanCrawler(QMainWindow, form_class):
         self.price_worker.start()
 
     def execute_browser(self):
-        self.post_worker.start()
+        self.post_worker.execute_browser()
 
     def crawl_post(self):
         self.post_worker.go_to_board()
@@ -47,10 +50,10 @@ class PriceWorker(QThread):
         super().__init__()
 
     def run(self):
-        print("실시간 시세 추출 시작")
+        logging.info("실시간 시세 추출 시작")
         result = self.get_price()
         export_excel(result)
-        print("실시간 시세 추출 끝")
+        logging.info("실시간 시세 추출 끝")
 
     def get_price(self):
         now = round(time())
@@ -86,17 +89,20 @@ class PostWorker(QThread):
         self.running =True
 
     def run(self):
-        print("test 시작")
+        logging.info("post worker RUN!!!")
+
+    def execute_browser(self):
+        logging.info("execute_browser 시작")
         self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac')
         self.browser.get(coinpan_config.LOGIN_URL)
-        print("test 끝")
+        logging.info("execute_browser 끝")
 
     def go_to_board(self):
         self.browser.get(coinpan_config.BOARD_URL)
 
 
 if __name__ == "__main__":
-    print("프로그램 기동")
+    logging.info("프로그램 기동")
     app = QApplication(sys.argv)
     coinpan_crawelr = CoinpanCrawler()
     coinpan_crawelr.show()
