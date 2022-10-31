@@ -3,8 +3,10 @@ import re
 from PyQt6.QtCore import QThread
 
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from time import sleep
+from selenium.webdriver.common.keys import Keys
 
 import requests
 from io import BytesIO
@@ -36,22 +38,34 @@ class PostWorker(QThread):
     def execute_browser(self):
         self.parent.info("크롬 브라우저가 실행됩니다. 크롤링 전 로그인을 진행하시기 바랍니다.")
         self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac')
+        # self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
         self.browser.get(Config.LOGIN_URL)
 
     def crawl_past(self):
         self.parent.debug("과거 순으로 게시글 크롤링 시작")
         self.parent.click_start()
-        for i in range(5):
-            sleep(1)
+        self.browser.get(Config.BOARD_URL)
+
+        recent_no, current_page = 0, 0
+        while self.running:
+            has_next, recent_no = self.go_to_next_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
+            if has_next is False:
+                current_page = self.go_to_next_page()  # 다음(과거순) 페이지로 이동
+                self.parent.debug(f"{current_page} 페이지 크롤링 진행 중")
+            else:
+                detail = self.crawl_detail()
+                self.parent.ws.append(detail)
+
         self.parent.click_stop()
         self.parent.debug("과거 순으로 게시글 크롤링 종료")
 
     def crawl_recent(self):
         self.parent.debug("최신 순으로 게시글 크롤링 시작")
         self.parent.click_start()
-        self.go_to_page('10')  # 원하는 페이지로 이동
+        target_page = 10  # 1~10 페이지 중 선택
+        self.go_to_page(target_page)  # 원하는 페이지로 이동
 
-        recent_no, current_page = 0, 0
+        recent_no, current_page = 0, target_page
         while self.running:
             recent_no = self.go_to_prev_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
             if recent_no < 0:
@@ -64,7 +78,6 @@ class PostWorker(QThread):
                 detail = self.crawl_detail()
                 self.parent.ws.append(detail)
 
-        # self.parent.debug(detail)
         self.parent.click_stop()
         self.parent.debug("최신 순으로 게시글 크롤링 종료")
 
@@ -74,7 +87,7 @@ class PostWorker(QThread):
         lis = pagination.find_elements(by=By.TAG_NAME, value='li')
         for li in lis:
             a = li.find_element(by=By.TAG_NAME, value='a')
-            if page_no in a.get_attribute('href'):
+            if str(page_no) in a.get_attribute('href'):
                 a.click()
                 break
 
@@ -83,6 +96,18 @@ class PostWorker(QThread):
         lis = pagination.find_elements(by=By.TAG_NAME, value='li')
         is_next = False
         for li in reversed(lis):
+            if is_next:
+                current_page = li.text.strip()
+                li.find_element(by=By.TAG_NAME, value='a').click()
+                return int(current_page)
+            if li.get_attribute('class') == 'active':
+                is_next = True
+
+    def go_to_next_page(self):
+        pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
+        lis = pagination.find_elements(by=By.TAG_NAME, value='li')
+        is_next = False
+        for li in lis:
             if is_next:
                 current_page = li.text.strip()
                 li.find_element(by=By.TAG_NAME, value='a').click()
@@ -106,6 +131,26 @@ class PostWorker(QThread):
                     recent_no = int(no)
                     tr.find_element(by=By.CLASS_NAME, value='title').find_element(by=By.TAG_NAME, value='a').click()
                     return recent_no
+
+    def go_to_next_post(self, recent_no):
+        board_list = self.browser.find_element(by=By.ID, value='board_list')
+        table = board_list.find_element(by=By.TAG_NAME, value='table')
+        tbody = table.find_element(by=By.TAG_NAME, value='tbody')
+        trs = tbody.find_elements(by=By.TAG_NAME, value='tr')
+
+        for tr in trs:
+            if 'notice' in tr.get_attribute('class'):
+                pass
+            else:
+                no = tr.find_element(by=By.CLASS_NAME, value='no').text
+
+                if recent_no == 0 or (no.isnumeric() and int(no) < recent_no):
+                    recent_no = int(no)
+                    title = tr.find_element(by=By.CLASS_NAME, value='title')
+                    a = title.find_element(by=By.TAG_NAME, value='a')
+                    a.send_keys(Keys.ENTER)
+                    return True, recent_no
+        return False, recent_no
 
     def crawl_detail(self):
         """

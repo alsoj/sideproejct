@@ -1,6 +1,6 @@
 BASE_URL = 'https://coinpan.com/'
 LOGIN_URL = BASE_URL + 'index.php?mid=index&act=dispMemberLoginForm'
-BOARD_URL = BASE_URL + 'free'
+BOARD_URL = BASE_URL + 'index.php?mid=free&page=1'
 
 API_URL = 'https://api.coinpan.com/default.json?ts='
 API_EXCHANGE = ['bithumb', 'upbit', 'coinone', 'korbit', 'bitflyer', 'binance', 'bitfinex']
