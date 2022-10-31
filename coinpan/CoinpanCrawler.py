@@ -50,6 +50,17 @@ class CoinpanCrawler(QMainWindow, form_class):
         self.post_worker.set_function("execute_browser")
         self.post_worker.start()  # 크롬 브라우저 로딩
 
+    def check_page(self):
+        try:
+            if int(self.edit_page.text().strip()) > 0:
+                self.debug("페이지 체크 정상.")
+                return True
+            else:
+                raise Exception()
+        except Exception as e:
+            self.error("시작 페이지 값을 입력해주세요.")
+            return False
+
     def crawl_post(self):
         if self.radio_recent.isChecked():
             self.post_worker.set_function("crawl_recent")
@@ -59,6 +70,9 @@ class CoinpanCrawler(QMainWindow, form_class):
             self.post_worker.start()  # 과거 크롤링
 
     def click_start(self):
+        if not self.check_page():
+            return False
+
         if self.post_worker.browser is None:
             self.error("크롬 브라우저를 실행하여 로그인을 먼저 진행해주세요.")
         else:

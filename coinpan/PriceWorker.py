@@ -1,9 +1,11 @@
+import os
 from PyQt6.QtCore import QThread
 
 from datetime import datetime
 from pandas import DataFrame
 from time import time
 import requests
+from openpyxl import Workbook, load_workbook
 
 import Config
 
@@ -20,8 +22,13 @@ class PriceWorker(QThread):
             self.parent.btn_price.setEnabled(False)
             self.parent.info("실시간 시세 추출 시작")
             result = get_price()
-            filename = export_excel(result)
-            self.parent.debug("파일 저장 경로 : " + filename)
+
+            if not os.path.isfile(Config.OUTPUT_DIR+Config.PRICE_FILENAME_FOR_APPEND):
+                create_excel()
+
+            append_excel(result)
+            # filename = export_excel(result)
+            # self.parent.debug("파일 저장 경로 : " + filename)
             self.parent.info("실시간 시세 추출 종료")
             self.parent.btn_price.setEnabled(True)
         except Exception as e:
@@ -39,9 +46,9 @@ def get_price():
     now = round(time())
     response = requests.get(Config.API_URL + str(now))
     data = response.json()
-
+    call_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     prices = DataFrame(
-        columns=['순번1', '순번2', '가상화폐', '거래소', '실시간시세(KRW)', '실시간시세(USD)', '24시간변동액', '24시간변동률', '한국프리미엄',
+        columns=['순번1', '순번2', '추출 시간', '가상화폐', '거래소', '실시간시세(KRW)', '실시간시세(USD)', '24시간변동액', '24시간변동률', '한국프리미엄',
                  '한국프리미엄(%)', '거래량'])
 
     for i, exchange in enumerate(Config.API_EXCHANGE):
@@ -49,7 +56,7 @@ def get_price():
             for j, coin in enumerate(Config.API_COIN):
                 if coin in data['prices'][exchange]:
                     price = data['prices'][exchange][coin]
-                    prices.loc[len(prices)] = [j, i, coin, exchange,
+                    prices.loc[len(prices)] = [j, i, call_time, coin, exchange,
                                                 round(float(price['now_price'] or 0), 2),
                                                 round(float(price['now_price_usd'] or 0), 4),
                                                 round(float(price['diff_24hr'] or 0), 2),
@@ -60,7 +67,33 @@ def get_price():
     result = prices.sort_values(by=['순번1','순번2'])
     result = result.drop(['순번1','순번2'], axis=1)
     result = result.reset_index(drop=True)
-    return result
+
+    return result.values.tolist()
+
+def append_excel(result):
+    """
+    엑셀 append 함수
+    :param result: 실시간 시세 list of list
+    :return: filename : 경로 및 파일명
+    """
+    wb = load_workbook(Config.OUTPUT_DIR + Config.PRICE_FILENAME_FOR_APPEND, data_only=True)
+    ws = wb.active
+    for row in result:
+        ws.append(row)
+    wb.save(Config.OUTPUT_DIR + Config.PRICE_FILENAME_FOR_APPEND)
+
+# 엑셀 파일 생성
+def create_excel():
+    wb = Workbook()
+    ws = wb.active
+
+    title = ['추출시간', '가상화폐', '거래소', '실시간시세(KRW)', '실시간시세(USD)', '24시간변동액', '24시간변동률', '한국프리미엄',
+                 '한국프리미엄(%)', '거래량']
+
+    for kwd, j in zip(title, list(range(1, len(title) + 1))):
+        ws.cell(row=1, column=j).value = kwd
+
+    wb.save(Config.OUTPUT_DIR + Config.PRICE_FILENAME_FOR_APPEND)
 
 def export_excel(result):
     """
