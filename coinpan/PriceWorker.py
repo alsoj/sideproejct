@@ -24,6 +24,9 @@ class PriceWorker(QThread):
         self.parent.info("실시간 시세 추출 종료")
         self.parent.btn_price.setEnabled(True)
 
+##############################
+# Static Method 영역
+##############################
 def get_price():
     """
     실시간 시세 API 호출
@@ -61,6 +64,6 @@ def export_excel(result):
     :param result: 실시간 시세 Dataframe
     :return filename : 경로 및 파일명
     """
-    filename = Config.OUTPUT_DIR + datetime.now().strftime('%Y%m%d%H%M%S') + Config.PRICE_FILENAME
+    filename = Config.OUTPUT_DIR + datetime.now().strftime('%Y%m%d-%H%M%S') + Config.PRICE_FILENAME
     result.to_excel(filename, index=False)
     return filename
