@@ -1,7 +1,8 @@
+import os
 import sys
 from PyQt6.QtWidgets import *
 
-from coinpan.CoinpanCrawler import CoinpanCrawler
+from CoinpanCrawler import CoinpanCrawler
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -1,14 +1,17 @@
+import os
+import sys
+
 from PyQt6.QtWidgets import QMainWindow
 from datetime import datetime
 from PyQt6 import uic
 
 # UI영역
-from coinpan import Config
-from coinpan.PostWorker import PostWorker
-from coinpan.PriceWorker import PriceWorker
+import Config
+from PostWorker import PostWorker
+from PriceWorker import PriceWorker
 from openpyxl import Workbook, load_workbook
 
-form_class = uic.loadUiType("./coinpan/CoinpanCrawler.ui")[0]
+form_class = uic.loadUiType(Config.UI_DIR)[0]
 class CoinpanCrawler(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
@@ -56,24 +59,29 @@ class CoinpanCrawler(QMainWindow, form_class):
             self.post_worker.start()  # 과거 크롤링
 
     def click_start(self):
-        self.post_worker.resume()
-        self.btn_start.setEnabled(False)
-        self.btn_stop.setEnabled(True)
+        if self.post_worker.browser is None:
+            self.error("크롬 브라우저를 실행하여 로그인을 먼저 진행해주세요.")
+        else:
+            self.post_worker.resume()
+            self.btn_start.setEnabled(False)
+            self.btn_stop.setEnabled(True)
 
-        # 엑셀 파일 생성 & 로드
-        self.filename = create_excel()
-        self.wb = load_workbook(self.filename, data_only=True)
-        self.ws = self.wb.active
-        self.crawl_post()
+            # 엑셀 파일 생성 & 로드
+            self.filename = create_excel()
+            self.wb = load_workbook(self.filename, data_only=True)
+            self.ws = self.wb.active
+            self.crawl_post()
 
     def click_stop(self):
-        self.post_worker.stop()
-        self.btn_start.setEnabled(True)
-        self.btn_stop.setEnabled(False)
+        if self.post_worker.browser is None:
+            self.error("크롬 브라우저를 실행하여 로그인을 먼저 진행해주세요.")
+        else:
+            self.post_worker.stop()
+            self.btn_start.setEnabled(True)
+            self.btn_stop.setEnabled(False)
 
-        # 엑셀 파일 저장
-        self.wb.save(self.filename)
-
+            # 엑셀 파일 저장
+            self.wb.save(self.filename)
 
 
 # 엑셀 파일 생성

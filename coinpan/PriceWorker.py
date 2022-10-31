@@ -16,13 +16,17 @@ class PriceWorker(QThread):
         self.parent = parent
 
     def run(self):
-        self.parent.btn_price.setEnabled(False)
-        self.parent.info("실시간 시세 추출 시작")
-        result = get_price()
-        filename = export_excel(result)
-        self.parent.debug("파일 저장 경로 : " + filename)
-        self.parent.info("실시간 시세 추출 종료")
-        self.parent.btn_price.setEnabled(True)
+        try:
+            self.parent.btn_price.setEnabled(False)
+            self.parent.info("실시간 시세 추출 시작")
+            result = get_price()
+            filename = export_excel(result)
+            self.parent.debug("파일 저장 경로 : " + filename)
+            self.parent.info("실시간 시세 추출 종료")
+            self.parent.btn_price.setEnabled(True)
+        except Exception as e:
+            print("실시간 시세 크롤링 중 오류 발생", e)
+
 
 ##############################
 # Static Method 영역

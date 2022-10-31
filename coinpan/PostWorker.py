@@ -3,10 +3,9 @@ import re
 from PyQt6.QtCore import QThread
 
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchWindowException
 
 import requests
 from io import BytesIO
@@ -23,21 +22,28 @@ class PostWorker(QThread):
         self.parent = parent
         self.method = None
         self.running = True
+        self.browser = None
 
     def run(self):
-        if self.method == "execute_browser":
-            self.execute_browser()
-        elif self.method == "crawl_past":
-            self.crawl_past()
-        elif self.method == "crawl_recent":
-            self.crawl_recent()
+        try:
+            if self.method == "execute_browser":
+                self.execute_browser()
+            elif self.method == "crawl_past":
+                self.crawl_past()
+            elif self.method == "crawl_recent":
+                self.crawl_recent()
+        except NoSuchWindowException as e:
+            self.browser = None
+            self.parent.error("크롬 브라우저를 실행하여 로그인을 먼저 진행해주세요.")
+            self.parent.btn_start.setEnabled(True)
+            self.parent.btn_stop.setEnabled(False)
 
     def set_function(self, method):
         self.method = method
 
     def execute_browser(self):
         self.parent.info("크롬 브라우저가 실행됩니다. 크롤링 전 로그인을 진행하시기 바랍니다.")
-        self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac')
+        self.browser = webdriver.Chrome(executable_path=Config.CHROME_DIR)
         # self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
         self.browser.get(Config.LOGIN_URL)
 
@@ -90,6 +96,21 @@ class PostWorker(QThread):
             if str(page_no) in a.get_attribute('href'):
                 a.click()
                 break
+
+    def get_current_page(self):
+        pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
+        lis = pagination.find_elements(by=By.TAG_NAME, value='li')
+        for li in lis:
+            if li.get_attribute('class') == 'active':
+                current_page = li.text.strip()
+                return current_page
+
+    def go_to_next_10_page(self):
+        pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
+        lis = pagination.find_elements(by=By.TAG_NAME, value='li')
+        for li in reversed(lis):
+            li.find_element(by=By.TAG_NAME, value='a').click()
+            break
 
     def go_to_prev_page(self):
         pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
