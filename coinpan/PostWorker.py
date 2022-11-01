@@ -50,17 +50,23 @@ class PostWorker(QThread):
     def crawl_past(self):
         self.parent.debug("과거 순으로 게시글 크롤링 시작")
         self.parent.click_start()
-        self.browser.get(Config.BOARD_URL)
+        target_page = self.parent.edit_page.text().strip()
+        self.go_to_input_page(target_page)  # 원하는 페이지로 이동
 
-        recent_no, current_page = 0, 0
+        recent_no, current_page = 0, target_page
         while self.running:
             has_next, recent_no = self.go_to_next_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
             if has_next is False:
                 current_page = self.go_to_next_page()  # 다음(과거순) 페이지로 이동
                 self.parent.debug(f"{current_page} 페이지 크롤링 진행 중")
             else:
-                detail = self.crawl_detail()
-                self.parent.ws.append(detail)
+                try:
+                    detail = self.crawl_detail()
+                    self.parent.ws.append(detail)
+                except Exception as e:
+                    self.error(str(e))
+                finally:
+                    self.parent.wb.save(self.parent.filename)
 
         self.parent.click_stop()
         self.parent.debug("과거 순으로 게시글 크롤링 종료")
@@ -68,8 +74,8 @@ class PostWorker(QThread):
     def crawl_recent(self):
         self.parent.debug("최신 순으로 게시글 크롤링 시작")
         self.parent.click_start()
-        target_page = 10  # 1~10 페이지 중 선택
-        self.go_to_page(target_page)  # 원하는 페이지로 이동
+        target_page = self.parent.edit_page.text().strip()
+        self.go_to_input_page(target_page)  # 원하는 페이지로 이동
 
         recent_no, current_page = 0, target_page
         while self.running:
@@ -81,14 +87,27 @@ class PostWorker(QThread):
                 else:
                     break
             else:
-                detail = self.crawl_detail()
-                self.parent.ws.append(detail)
+                try:
+                    detail = self.crawl_detail()
+                    self.parent.ws.append(detail)
+                except Exception as e:
+                    self.error(str(e))
+                finally:
+                    self.parent.wb.save(self.parent.filename)
 
         self.parent.click_stop()
         self.parent.debug("최신 순으로 게시글 크롤링 종료")
 
-    def go_to_page(self, page_no):
+    def go_to_input_page(self, page_no):
         self.browser.get(Config.BOARD_URL)
+        while True:
+            if int(page_no) > self.get_max_page():
+                self.go_to_next_10_page()
+            else:
+                self.go_to_page_in_10_page(page_no)
+                break
+
+    def go_to_page_in_10_page(self, page_no):
         pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
         lis = pagination.find_elements(by=By.TAG_NAME, value='li')
         for li in lis:
@@ -97,13 +116,12 @@ class PostWorker(QThread):
                 a.click()
                 break
 
-    def get_current_page(self):
+    def get_max_page(self):
         pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
         lis = pagination.find_elements(by=By.TAG_NAME, value='li')
-        for li in lis:
-            if li.get_attribute('class') == 'active':
-                current_page = li.text.strip()
-                return current_page
+        for li in reversed(lis):
+            if li.get_attribute('class') != 'fn_rarrow':
+                return int(li.text)
 
     def go_to_next_10_page(self):
         pagination = self.browser.find_element(by=By.CLASS_NAME, value='pagination')
