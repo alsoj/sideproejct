@@ -12,9 +12,9 @@ import crawl_config
 import requests
 
 # 전역변수 세팅
-# URL = 'http://www.sbiz.or.kr/sup/search/Search.do' # 외부망
-# URL = 'https://10.217.58.126:18882/sup/search/Search.do' # 개발계
-URL = 'https://211.252.121.132:18882/sup/search/Search.do'  # 운영계
+URL = 'http://www.sbiz.or.kr/sup/search/Search.do' # 외부망
+# URL = 'http://10.217.58.126:18882/sup/search/Search.do' # 개발계
+# URL = 'http://211.252.121.132:18882/sup/search/Search.do'  # 운영계
 
 KEYWORD_LIST = ['정책','창업','대출']
 TAB_LIST = ['supportmeasures','businessinfo','notice'] #지원시책, 사업정보, 알림정보
@@ -83,7 +83,7 @@ def insert_sup(params):
   finally:
     if conn is not None:
       conn.close()
-    print("insert_sup() FINISH")
+    # print("insert_sup() FINISH")
 
 def execute_browser():
   """
@@ -91,14 +91,15 @@ def execute_browser():
   :return: 크롬 브라우저
   """
   options = webdriver.ChromeOptions()
-  options.add_argument("headless")
-  options.add_argument("no-sandbox")
-  options.add_argument("disable-gpu")
-  options.add_argument("single-process")
-  options.add_argument("disable-dev-shm-usage")
-  # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+  options.add_argument("--headless")
+  options.add_argument("--no-sandbox")
+  options.add_argument("--disable-gpu")
+  options.add_argument("--single-process")
+  options.add_argument("--disable-dev-shm-usage")
+
+  browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options) # 로컬
   # browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options) # 외부망
-  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)  # 개발,운영
+  # browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)  # 개발,운영
   return browser
 
 
@@ -209,7 +210,7 @@ def insert_sup_info(browser):
 
       # 오늘 날짜에 해당하는 기사만 크롤링
       reg_dt = page.find_element(by=By.CLASS_NAME, value='bl_date').text.split(':')[1].strip()
-      if reg_dt.replace(".","") != get_today():
+      if int(reg_dt.replace(".","")) <= int(get_today() and int(reg_dt.replace(".","")) >= '20220819'):
         print("not today's article : pass")
         return False
 
@@ -217,9 +218,9 @@ def insert_sup_info(browser):
       temp_list.append(reg_dt)
       url = page.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
       if url.startswith('javascript'):
-        # temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1]) # 외부망
+        temp_list.append('http://www.sbiz.or.kr' + url.split('\'')[1]) # 외부망
         # temp_list.append('https://10.217.58.126:18882' + url.split('\'')[1]) # 개발계
-        temp_list.append('https://211.252.121.132:18882' + url.split('\'')[1]) # 운영계
+        # temp_list.append('https://211.252.121.132:18882' + url.split('\'')[1]) # 운영계
       else:
         temp_list.append(url)
 
@@ -269,7 +270,9 @@ def get_today():
   오늘 날짜 추출
   :return: 오늘 날짜(YYYYMMDD)
   """
-  return datetime.datetime.now().strftime('%Y%m%d')
+
+  # return datetime.datetime.now().strftime('%Y%m%d')
+  return '20220725'
 
 def start_crawl(browser, TARGET_KEYWORD):
   """
@@ -293,7 +296,7 @@ if __name__ == "__main__":
   browser = execute_browser()
   browser.set_page_load_timeout(3600)
   try:
-    delete_sup() # 당일자 데이터 삭제 후 크롤링 진행
+    # delete_sup() # 당일자 데이터 삭제 후 크롤링 진행
 
     for task in CRAWL_LIST:
       TARGET_KEYWORD, TARGET_TAB = task
