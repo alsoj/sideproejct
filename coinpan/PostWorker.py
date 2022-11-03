@@ -11,6 +11,8 @@ import requests
 from io import BytesIO
 from PIL import Image
 
+from time import sleep
+
 import Config
 
 class PostWorker(QThread):
@@ -60,13 +62,17 @@ class PostWorker(QThread):
                 current_page = self.go_to_next_page()  # 다음(과거순) 페이지로 이동
                 self.parent.debug(f"{current_page} 페이지 크롤링 진행 중")
             else:
-                try:
-                    detail = self.crawl_detail()
-                    self.parent.ws.append(detail)
-                except Exception as e:
-                    self.error(str(e))
-                finally:
-                    self.parent.wb.save(self.parent.filename)
+                retries = 3
+                while retries > 0:
+                    try:
+                        detail = self.crawl_detail()
+                        self.parent.ws.append(detail)
+                        self.parent.wb.save(self.parent.filename)
+                        retries = 0
+                    except Exception as e:
+                        retries -= 1
+                        self.parent.error("진행 중 오류 발생, 남은 재시도 : " + str(retries))
+                        sleep(3)
 
         self.parent.click_stop()
         self.parent.debug("과거 순으로 게시글 크롤링 종료")
@@ -87,13 +93,17 @@ class PostWorker(QThread):
                 else:
                     break
             else:
-                try:
-                    detail = self.crawl_detail()
-                    self.parent.ws.append(detail)
-                except Exception as e:
-                    self.error(str(e))
-                finally:
-                    self.parent.wb.save(self.parent.filename)
+                retries = 3
+                while retries > 0:
+                    try:
+                        detail = self.crawl_detail()
+                        self.parent.ws.append(detail)
+                        self.parent.wb.save(self.parent.filename)
+                        retries = 0
+                    except Exception as e:
+                        retries -= 1
+                        self.parent.error("진행 중 오류 발생, 남은 재시도 : " + str(retries))
+                        sleep(3)
 
         self.parent.click_stop()
         self.parent.debug("최신 순으로 게시글 크롤링 종료")

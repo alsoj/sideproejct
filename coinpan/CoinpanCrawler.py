@@ -53,7 +53,6 @@ class CoinpanCrawler(QMainWindow, form_class):
     def check_page(self):
         try:
             if int(self.edit_page.text().strip()) > 0:
-                self.debug("페이지 체크 정상.")
                 return True
             else:
                 raise Exception()
