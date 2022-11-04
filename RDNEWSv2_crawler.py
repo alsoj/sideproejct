@@ -60,8 +60,8 @@ class RDNEWSCrawler(QMainWindow, form_class):
         else:
             background_yn = "Y" if self.chk_background.isChecked() > 0 else "N"
             options = get_option(background_yn)
-            # self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
-            self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
+            # self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
             self.news_worker.start()
 
     def closeEvent(self, QCloseEvent):
@@ -177,7 +177,7 @@ def select_month(browser, input_month):
 
     # 해당 월 클릭
     for li in lis:
-        if li.text.strip().replace("월", "") == input_month:
+        if li.text.strip().replace("월", "").zfill(2) == input_month:
             li.click()
             break
 
@@ -188,7 +188,7 @@ def select_day(browser, input_day):
     lis = dates.find_elements(by=By.TAG_NAME, value='li')
 
     for li in lis:
-        if 'dhtmlxcalendar_cell_month' in li.get_attribute('class') and li.text.strip() == input_day:
+        if 'dhtmlxcalendar_cell_month' in li.get_attribute('class') and li.text.strip().zfill(2) == input_day:
             li.click()
             break
 
