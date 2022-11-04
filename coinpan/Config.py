@@ -1,8 +1,12 @@
 import os
 import sys
 
-# program_dir = os.path.dirname(os.path.abspath(sys.executable))
-program_dir = '/Users/alsoj/Workspace/kmong/coinpan'
+program_dir = os.path.dirname(os.path.abspath(sys.executable))
+
+###########################################################
+# 파이참에서 실행할 경우 아래에 MAIN.py가 존재하는 디렉토리 경로 입력
+# program_dir = '/Users/alsoj/Workspace/kmong/coinpan'
+###########################################################
 
 BASE_URL = 'https://coinpan.com/'
 LOGIN_URL = BASE_URL + 'index.php?mid=index&act=dispMemberLoginForm'

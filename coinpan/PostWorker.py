@@ -74,6 +74,11 @@ class PostWorker(QThread):
                         self.parent.error("진행 중 오류 발생, 남은 재시도 : " + str(retries))
                         sleep(3)
 
+                    ###################################
+                    # 페이지 내 한 게시물만 추출을 원할 경우 주석해제
+                    # recent_no = 1
+                    ###################################
+
         self.parent.click_stop()
         self.parent.debug("과거 순으로 게시글 크롤링 종료")
 
@@ -104,6 +109,11 @@ class PostWorker(QThread):
                         retries -= 1
                         self.parent.error("진행 중 오류 발생, 남은 재시도 : " + str(retries))
                         sleep(3)
+
+                    ###################################
+                    # 페이지 내 한 게시물만 추출을 원할 경우 주석해제
+                    # recent_no = 9999999999999999999999
+                    ###################################
 
         self.parent.click_stop()
         self.parent.debug("최신 순으로 게시글 크롤링 종료")
@@ -180,6 +190,8 @@ class PostWorker(QThread):
                     recent_no = int(no)
                     tr.find_element(by=By.CLASS_NAME, value='title').find_element(by=By.TAG_NAME, value='a').click()
                     return recent_no
+                else:
+                    return -1
 
     def go_to_next_post(self, recent_no):
         board_list = self.browser.find_element(by=By.ID, value='board_list')
@@ -255,7 +267,14 @@ class PostWorker(QThread):
                 level = img.get_attribute('alt')
                 nickname = nickname_info.text.replace("|", "").replace("\n", "")
                 comment = li.find_element(by=By.CLASS_NAME, value='contents_bar').text.replace("\n", "")
+
+                ####################################################
+                # 닉네임, 레벨, 댓글 표기
                 comments += nickname + level + " - " + comment + "\n"
+                ####################################################
+                # 댓글만 표기( |로 구분 )
+                # comments += comment + " | "
+                ####################################################
             except Exception as e:
                 pass
         detail.append(comments)
