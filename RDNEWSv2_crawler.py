@@ -65,7 +65,8 @@ class RDNEWSCrawler(QMainWindow, form_class):
             self.news_worker.start()
 
     def closeEvent(self, QCloseEvent):
-        self.browser.quit()
+        if hasattr(self, 'browser'):
+            self.browser.quit()
 
 class NewsWorker(QThread):
     def __init__(self, parent):
@@ -92,30 +93,29 @@ class NewsWorker(QThread):
 
             # INDEX 페이지 이동
             index_url = 'http://www.rodong.rep.kp/ko'
-            connect(self.parent.browser, index_url)
+            self.connect_url(index_url)
 
             crawl_ymd = start_ymd
             while crawl_ymd <= end_ymd:
                 # 대상 날짜 이동
                 crawl_input_ymd = crawl_ymd.strftime("%Y%m%d")
                 str_input_ymd = crawl_ymd.strftime("%Y-%m-%d")
-                self.parent.debug(f"{str_input_ymd}의 기사 수집 중")
+                self.parent.info(f"{str_input_ymd}의 기사 수집 중")
                 set_date(self.parent.browser, crawl_input_ymd)
 
                 url_list = get_url_list(self.parent.browser)
 
                 for i, url in enumerate(url_list):
-                    connect(self.parent.browser, url)
+                    if self.connect_url(url): # 연결되었을 때 상세 크롤링 진행
+                        # 기사 상세 크롤링
+                        temp_row = get_detail(self.parent.browser)
+                        key = str_input_ymd + "-" + str(i+1).zfill(3)
+                        temp_row.insert(0, key)
 
-                    # 기사 상세 크롤링
-                    temp_row = get_detail(self.parent.browser)
-                    key = str_input_ymd + "-" + str(i+1).zfill(3)
-                    temp_row.insert(0, key)
-
-                    # 엑셀 append
-                    ws.append(temp_row)
-                    wb.save(FILE_PATH + FILE_NAME)
-                    self.parent.debug(f"{str_input_ymd} : {str(i+1)}번째 기사 수집 중")
+                        # 엑셀 append
+                        ws.append(temp_row)
+                        wb.save(FILE_PATH + FILE_NAME)
+                        self.parent.debug(f"{str_input_ymd} : {str(i+1)}번째 기사 수집 중")
 
                 crawl_ymd += timedelta(days=1)
 
@@ -125,6 +125,21 @@ class NewsWorker(QThread):
         finally:
             self.parent.browser.quit()
             self.parent.btn_start.setEnabled(True)
+
+    def connect_url(self, url):
+        retries = RETRY_CNT
+        connected = False
+        while retries > 0:
+            try:
+                self.parent.browser.get(url)
+                connected = True
+                break
+            except Exception as e:
+                retries -= 1
+                self.parent.debug("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+                sleep(SLEEP_TIME)
+                continue
+        return connected
 
 def get_option(background_yn):
     # 백그라운드 실행 세팅
@@ -221,54 +236,65 @@ def get_url_list(browser):
 
 # 기사 상세 크롤링
 def get_detail(browser):
-    # 헤드
-    result_head = ''
-    heads = browser.find_elements(by=By.CLASS_NAME, value='news_Head')
-    for head in heads:
-        result_head += head.text + "\r\n"
-    result_head = result_head.strip()
-
-    # 제목
-    result_title = ''
-    titles = browser.find_elements(by=By.CLASS_NAME, value='news_Title')
-    for title in titles:
-        result_title += title.text + "\r\n"
-    result_title = result_title.strip()
-
-    # 부제
-    result_subtitle = ''
-    subtitles = browser.find_elements(by=By.CLASS_NAME, value='news_SubTitle')
-    for subtitle in subtitles:
-        result_subtitle += subtitle.text + "\r\n"
-    result_subtitle = result_subtitle.strip()
-
-    # 게재 일자
-    result_news_date = browser.find_element(by=By.CLASS_NAME, value='NewsDate').text
-
-    # 신문 명, 면수
-    news_side = browser.find_element(by=By.CLASS_NAME, value='NewsSide').text
-    result_news_name = news_side.split(" ")[0]
-    result_news_side = news_side.split(" ")[1]
-
-    # 기사내용, 기자 명
-    result_content, result_writer = '', ''
-    article_contents = browser.find_elements(by=By.CLASS_NAME, value='ArticleContent')
-    for content in article_contents:
-        if 'right' in content.get_attribute('style'):
-            result_writer += content.text
-        else:
-            result_content += content.text + "\r\n"
-    result_content = result_content.strip()
-
+    retries = RETRY_CNT
     temp_row = []
-    temp_row.append(unicodedata.normalize('NFKC', result_head))
-    temp_row.append(unicodedata.normalize('NFKC', result_title))
-    temp_row.append(unicodedata.normalize('NFKC', result_subtitle))
-    temp_row.append(unicodedata.normalize('NFKC', result_news_date))
-    temp_row.append(unicodedata.normalize('NFKC', result_news_name))
-    temp_row.append(unicodedata.normalize('NFKC', result_news_side))
-    temp_row.append(unicodedata.normalize('NFKC', result_content))
-    temp_row.append(unicodedata.normalize('NFKC', result_writer))
+    while retries > 0:
+        try:
+            # 헤드
+            result_head = ''
+            heads = browser.find_elements(by=By.CLASS_NAME, value='news_Head')
+            for head in heads:
+                result_head += head.text + "\r\n"
+            result_head = result_head.strip()
+
+            # 제목
+            result_title = ''
+            titles = browser.find_elements(by=By.CLASS_NAME, value='news_Title')
+            for title in titles:
+                result_title += title.text + "\r\n"
+            result_title = result_title.strip()
+
+            # 부제
+            result_subtitle = ''
+            subtitles = browser.find_elements(by=By.CLASS_NAME, value='news_SubTitle')
+            for subtitle in subtitles:
+                result_subtitle += subtitle.text + "\r\n"
+            result_subtitle = result_subtitle.strip()
+
+            # 게재 일자
+            result_news_date = browser.find_element(by=By.CLASS_NAME, value='NewsDate').text
+
+            # 신문 명, 면수
+            news_side = browser.find_element(by=By.CLASS_NAME, value='NewsSide').text
+            result_news_name = news_side.split(" ")[0]
+            result_news_side = news_side.split(" ")[1]
+
+            # 기사내용, 기자 명
+            result_content, result_writer = '', ''
+            article_contents = browser.find_elements(by=By.CLASS_NAME, value='ArticleContent')
+            for content in article_contents:
+                if 'right' in content.get_attribute('style'):
+                    result_writer += content.text
+                else:
+                    result_content += content.text + "\r\n"
+            result_content = result_content.strip()
+
+            temp_row.append(unicodedata.normalize('NFKC', result_head))
+            temp_row.append(unicodedata.normalize('NFKC', result_title))
+            temp_row.append(unicodedata.normalize('NFKC', result_subtitle))
+            temp_row.append(unicodedata.normalize('NFKC', result_news_date))
+            temp_row.append(unicodedata.normalize('NFKC', result_news_name))
+            temp_row.append(unicodedata.normalize('NFKC', result_news_side))
+            temp_row.append(unicodedata.normalize('NFKC', result_content))
+            temp_row.append(unicodedata.normalize('NFKC', result_writer))
+            break
+        except Exception as e:
+            retries -= 1
+            sleep(5)
+            print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+            print(e)
+            continue
+
     return temp_row
 
 # 기사 상세 다음 페이지 이동
@@ -290,19 +316,6 @@ def create_excel():
         os.mkdir(FILE_PATH)
 
     wb.save(FILE_PATH+FILE_NAME)
-
-def connect(browser, url):
-    retries = RETRY_CNT
-    while retries > 0:
-        try:
-            browser.get(url)
-            break
-        except Exception as e:
-            retries -= 1
-            sleep(SLEEP_TIME)
-            print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
-            print(e)
-            continue
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
