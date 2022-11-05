@@ -76,7 +76,7 @@ class PostWorker(QThread):
 
                     ###################################
                     # 페이지 내 한 게시물만 추출을 원할 경우 주석해제
-                    # recent_no = 1
+                    recent_no = 1
                     ###################################
 
         self.parent.click_stop()
@@ -112,7 +112,7 @@ class PostWorker(QThread):
 
                     ###################################
                     # 페이지 내 한 게시물만 추출을 원할 경우 주석해제
-                    # recent_no = 9999999999999999999999
+                    recent_no = 9999999999999999999999
                     ###################################
 
         self.parent.click_stop()
@@ -185,7 +185,6 @@ class PostWorker(QThread):
                 return -1
             else:
                 no = tr.find_element(by=By.CLASS_NAME, value='no').text
-
                 if no.isnumeric() and int(no) > recent_no:
                     recent_no = int(no)
                     tr.find_element(by=By.CLASS_NAME, value='title').find_element(by=By.TAG_NAME, value='a').click()
@@ -211,7 +210,7 @@ class PostWorker(QThread):
                     a = title.find_element(by=By.TAG_NAME, value='a')
                     a.send_keys(Keys.ENTER)
                     return True, recent_no
-        return False, recent_no
+        return False, 0
 
     def crawl_detail(self):
         """
@@ -270,10 +269,10 @@ class PostWorker(QThread):
 
                 ####################################################
                 # 닉네임, 레벨, 댓글 표기
-                comments += nickname + level + " - " + comment + "\n"
+                # comments += nickname + level + " - " + comment + "\n"
                 ####################################################
                 # 댓글만 표기( |로 구분 )
-                # comments += comment + " | "
+                comments += comment + " | "
                 ####################################################
             except Exception as e:
                 pass
