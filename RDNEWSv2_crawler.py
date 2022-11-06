@@ -1,5 +1,6 @@
 import sys
 import os
+import platform
 
 from PyQt6.QtCore import QDate, QThread
 from PyQt6.QtWidgets import *
@@ -60,8 +61,11 @@ class RDNEWSCrawler(QMainWindow, form_class):
         else:
             background_yn = "Y" if self.chk_background.isChecked() > 0 else "N"
             options = get_option(background_yn)
-            self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
-            # self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            if 'macOS' in platform.platform():
+                self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
+            else:
+                self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
             self.news_worker.start()
 
     def closeEvent(self, QCloseEvent):
@@ -316,6 +320,7 @@ def create_excel():
         os.mkdir(FILE_PATH)
 
     wb.save(FILE_PATH+FILE_NAME)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
