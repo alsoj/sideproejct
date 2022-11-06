@@ -5,7 +5,7 @@ from PyQt6.QtCore import QThread
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchWindowException
+from selenium.common.exceptions import NoSuchWindowException, TimeoutException
 
 import requests
 from io import BytesIO
@@ -57,7 +57,12 @@ class PostWorker(QThread):
 
         recent_no, current_page = 0, target_page
         while self.running:
-            has_next, recent_no = self.go_to_next_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
+            try:
+                has_next, recent_no = self.go_to_next_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
+            except TimeoutException as e:
+                self.parent.browser.refresh()
+                has_next, recent_no = self.go_to_next_post(recent_no)
+
             if has_next is False:
                 current_page = self.go_to_next_page()  # 다음(과거순) 페이지로 이동
                 self.parent.debug(f"{current_page} 페이지 크롤링 진행 중")
@@ -189,8 +194,7 @@ class PostWorker(QThread):
                     recent_no = int(no)
                     tr.find_element(by=By.CLASS_NAME, value='title').find_element(by=By.TAG_NAME, value='a').click()
                     return recent_no
-                else:
-                    return -1
+        return -1
 
     def go_to_next_post(self, recent_no):
         board_list = self.browser.find_element(by=By.ID, value='board_list')
@@ -272,11 +276,14 @@ class PostWorker(QThread):
                 # comments += nickname + level + " - " + comment + "\n"
                 ####################################################
                 # 댓글만 표기( |로 구분 )
-                comments += comment + " | "
+                # comments += comment + " | "
+                ####################################################
+                # 댓글 별도 열로 구분
+                detail.append(comment)
                 ####################################################
             except Exception as e:
                 pass
-        detail.append(comments)
+        # detail.append(comments)
 
         return detail
 
