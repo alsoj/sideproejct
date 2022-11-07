@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import *
 
 from PyQt6.QtWidgets import QMainWindow
 from datetime import datetime, timedelta
-from PyQt6 import uic
+from PyQt6 import uic, QtGui, QtCore
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -18,6 +18,7 @@ from openpyxl import Workbook, load_workbook
 
 from time import sleep
 import unicodedata
+import re
 
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
@@ -39,6 +40,7 @@ class RDNEWSCrawler(QMainWindow, form_class):
         # 날짜 기본 세팅
         self.input_start_ymd.setDate(QDate(datetime.now()-timedelta(days=7)))
         self.input_end_ymd.setDate(QDate(datetime.now()))
+        self.scroll_bar = self.log_browser.verticalScrollBar()
 
         # 작업 시작 클릭 시
         self.btn_start.clicked.connect(self.crawl_news)
@@ -46,14 +48,17 @@ class RDNEWSCrawler(QMainWindow, form_class):
     def debug(self, text):  # 디버그 로그 출력
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f"[{now}] " + text)
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     def info(self, text):  # 정보 로그 출력
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f'<p style="color:green">[{now}] {text}</p>')
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     def error(self, text):  # 에러 로그 출력
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f'<p style="color:red">[{now}] {text}</p>')
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     def crawl_news(self):
         if self.input_end_ymd.date().toPyDate() < self.input_start_ymd.date().toPyDate():
@@ -97,7 +102,6 @@ class NewsWorker(QThread):
 
             # INDEX 페이지 이동
             index_url = 'http://www.rodong.rep.kp/ko'
-            self.connect_url(index_url)
 
             crawl_ymd = start_ymd
             while crawl_ymd <= end_ymd:
@@ -105,16 +109,24 @@ class NewsWorker(QThread):
                 crawl_input_ymd = crawl_ymd.strftime("%Y%m%d")
                 str_input_ymd = crawl_ymd.strftime("%Y-%m-%d")
                 self.parent.info(f"{str_input_ymd}의 기사 수집 중")
+                self.connect_url(index_url)
                 set_date(self.parent.browser, crawl_input_ymd)
 
-                url_list = get_url_list(self.parent.browser)
+                url_list, title_list = get_url_list(self.parent.browser)
 
                 for i, url in enumerate(url_list):
-                    if self.connect_url(url): # 연결되었을 때 상세 크롤링 진행
+                    if self.connect_url(url):  # 연결되었을 때 상세 크롤링 진행
                         # 기사 상세 크롤링
                         temp_row = get_detail(self.parent.browser)
                         key = str_input_ymd + "-" + str(i+1).zfill(3)
-                        temp_row.insert(0, key)
+                        temp_row.insert(0, key)  # 일련번호
+                        temp_row.insert(4, str_input_ymd)  # 일자
+                        temp_row.insert(5, "《로동신문》")  # 매체명
+                        news_side = re.findall('\d면', title_list[i])
+                        if len(news_side) > 0:
+                            temp_row.insert(6, news_side[0])  # 면수
+                        else:
+                            temp_row.insert(6, '')  # 면수
 
                         # 엑셀 append
                         ws.append(temp_row)
@@ -140,7 +152,7 @@ class NewsWorker(QThread):
                 break
             except Exception as e:
                 retries -= 1
-                self.parent.debug("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+                self.parent.debug("응답이 없어 재시도 합니다. 남은 재시도 회수 : " + str(retries))
                 sleep(SLEEP_TIME)
                 continue
         return connected
@@ -223,20 +235,23 @@ def set_date(browser, input_date):
 
 def get_url_list(browser):
     retries = RETRY_CNT
-    url_list = []
+    url_list, title_list = [], []
     while retries > 0:
         try:
             newslist = browser.find_element(by=By.CLASS_NAME, value='date_news_list')
             rows = newslist.find_elements(by=By.CLASS_NAME, value='row')
             for row in rows:
-                url_list.append(row.find_element(by=By.TAG_NAME, value='a').get_attribute('href'))
+                media_body = row.find_element(by=By.CLASS_NAME, value='media-body')
+                a_tag = media_body.find_element(by=By.TAG_NAME, value='a')
+                url_list.append(a_tag.get_attribute('href'))
+                title_list.append(a_tag.text)
             break
         except Exception as e:
             retries -= 1
             print("get_url_list 오류 발생" + str(retries))
             sleep(5)
             continue
-    return url_list
+    return url_list, title_list
 
 # 기사 상세 크롤링
 def get_detail(browser):
@@ -266,12 +281,12 @@ def get_detail(browser):
             result_subtitle = result_subtitle.strip()
 
             # 게재 일자
-            result_news_date = browser.find_element(by=By.CLASS_NAME, value='NewsDate').text
+            # result_news_date = browser.find_element(by=By.CLASS_NAME, value='NewsDate').text
 
             # 신문 명, 면수
-            news_side = browser.find_element(by=By.CLASS_NAME, value='NewsSide').text
-            result_news_name = news_side.split(" ")[0]
-            result_news_side = news_side.split(" ")[1]
+            # news_side = browser.find_element(by=By.CLASS_NAME, value='NewsSide').text
+            # result_news_name = news_side.split(" ")[0]
+            # result_news_side = news_side.split(" ")[1]
 
             # 기사내용, 기자 명
             result_content, result_writer = '', ''
@@ -286,19 +301,21 @@ def get_detail(browser):
             temp_row.append(unicodedata.normalize('NFKC', result_head))
             temp_row.append(unicodedata.normalize('NFKC', result_title))
             temp_row.append(unicodedata.normalize('NFKC', result_subtitle))
-            temp_row.append(unicodedata.normalize('NFKC', result_news_date))
-            temp_row.append(unicodedata.normalize('NFKC', result_news_name))
-            temp_row.append(unicodedata.normalize('NFKC', result_news_side))
+            # temp_row.append(unicodedata.normalize('NFKC', result_news_date))
+            # temp_row.append(unicodedata.normalize('NFKC', result_news_name))
+            # temp_row.append(unicodedata.normalize('NFKC', result_news_side))
             temp_row.append(unicodedata.normalize('NFKC', result_content))
             temp_row.append(unicodedata.normalize('NFKC', result_writer))
             break
         except Exception as e:
-            retries -= 1
-            sleep(5)
-            print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
-            print(e)
-            continue
-
+            videos = browser.find_elements(by=By.TAG_NAME, value='video')
+            if len(videos) > 0:
+                retries = 0
+            else:
+                retries -= 1
+                sleep(5)
+                print("응답이 없어 재시도 합니다. 남은 재시도 회수 : ", retries)
+                continue
     return temp_row
 
 # 기사 상세 다음 페이지 이동
