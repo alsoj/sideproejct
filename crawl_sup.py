@@ -81,9 +81,9 @@ def insert_sup(params):
         count = cur.fetchone()[0]
 
         if count > 0:
-            log_info("already exists : " + params[-1])
+            log_info("already data exists(pass) : " + params[-1])
         else:
-            log_info("new data : " + params[-1])
+            log_info("new data(insert) : " + params[-1])
             cur.execute(insert_sql, params)
 
         conn.commit()
@@ -136,7 +136,7 @@ def search_tab(keyword, tab, start_date):
             temp_dict['date'] = date
             temp_row.append(temp_dict)
     else:
-        log_info(f"대상 데이터가 없습니다. ({keyword}, {tab})")
+        log_info(f"no target data. ({category[keyword]}, {tab})")
 
     return temp_row
 
@@ -163,14 +163,14 @@ def log_error(text):
 
 
 if __name__ == "__main__":
-    log_debug("crawl_sup.py 시작")
+    log_debug("crawl_sup.py START")
     max_date = get_max_date()
-    log_debug("기존 데이터 중 마지막 수집된 일자 : " + max_date)
+    log_debug("get_max_date : " + max_date)
 
     for task in CRAWL_LIST:
         keyword, tab = task
         log_debug("=================================")
-        log_debug("KEYWORD :" + keyword + " | TAB :" + tab)
+        log_debug("KEYWORD :" + category[keyword] + " | TAB :" + tab)
 
         target_list = search_tab(keyword, tab, max_date)
         for target in target_list:
@@ -179,4 +179,4 @@ if __name__ == "__main__":
             params = [title, content, category[keyword], target['source'], target['date'], target['url']]
             insert_sup(params)
 
-    log_debug("crawl_sup.py 종료")
+    log_debug("crawl_sup.py FINISH")
