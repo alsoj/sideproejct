@@ -5,7 +5,7 @@ import json
 
 import viralc_config
 import viralc_common
-
+from viralc_common import log_debug, log_info, log_error
 
 def login_instagram(browser, id, password):
     """
@@ -26,9 +26,11 @@ def login_instagram(browser, id, password):
     sleep(10)
 
     if '잘못된 비밀번호' in browser.page_source:
-        return 'PWERR'
+        return '잘못된 비밀번호입니다.'
     elif '입력한 사용자 이름' in browser.page_source:
-        return 'IDERR'
+        return '잘못된 사용자 ID입니다.'
+    elif '문제가 발생' in browser.page_source:
+        return '일시적인 문제가 발생하였습니다.'
     else:
         return 'OK'
 
@@ -49,9 +51,10 @@ def get_api_url(browser, post_id):
             if request.response:
                 if 'query_hash=' in request.url and post_id in request.url:
                     api_url = request.url
+                    break
 
     except Exception as e:
-        print(str(e))
+        log_error("get_api_url 실행 중 오류 발생 : " + str(e))
     finally:
         del browser.requests
         return api_url
@@ -76,7 +79,7 @@ def get_data(browser, api_url):
         comment_cnt = media['edge_media_preview_comment']['count']  # 코멘트
         follower_cnt = media['owner']['edge_followed_by']['count']  # 팔로워
     except Exception as e:
-        print(str(e))
+        log_error("get_data 실행 중 오류 발생 : " + str(e))
     finally:
         return like_cnt, comment_cnt, follower_cnt
 
@@ -88,20 +91,20 @@ def get_instagram_info(browser, browser_login, post_id):
     """
     api_url = get_api_url(browser, post_id)
     like_count, comment_count, follower_count = get_data(browser_login, api_url)
-    print(post_id, like_count, comment_count, follower_count)
+    log_info(f"ID={post_id}, LIKE={like_count}, COMMENT={comment_count}, FOLLOWER={follower_count}")
 
     return like_count, comment_count, follower_count
 
 
 if __name__ == "__main__":
-    print("crawl_instagram.py 실행")
+    log_debug("crawl_instagram.py 실행")
 
     # DB 연결
     con = viralc_common.get_db_connection()
 
     # 대상 조회(DB)
     url_list = viralc_common.get_crawling_target(con, "I")
-    print(f"인스타그램 크롤링 대상 : {len(url_list)}건")
+    log_info(f"인스타그램 크롤링 대상 : {len(url_list)}건")
 
     browser = viralc_common.get_selenium_wire()
     browser_login = viralc_common.get_selenium()
@@ -109,10 +112,10 @@ if __name__ == "__main__":
         login_id = viralc_config.INSTAGRAM_CONFIG['LOGIN_ID']
         login_reuslt = login_instagram(browser_login, login_id, viralc_config.INSTAGRAM_CONFIG['LOGIN_PW'])
         if login_reuslt != "OK":
-            print(f"인스타그램 로그인에 실패했습니다. 계정 : {login_id}")
-            exit()
+            log_error(f"인스타그램 로그인에 실패했습니다. 계정 : {login_id}, 결과 : {login_reuslt}")
+            # exit()
         else:
-            print(f"인스타그램 로그인에 성공했습니다. 계정 : {login_id}")
+            log_info(f"인스타그램 로그인에 성공했습니다. 계정 : {login_id}")
 
         for url in url_list:
             result = viralc_common.get_reuslt_dict()
@@ -130,11 +133,11 @@ if __name__ == "__main__":
             # 대상 업데이트(DB)
             viralc_common.merge_crawl_result(con, result)
     except Exception as e:
-        print(e)
+        log_error("main 실행 중 오류 발생 : " + str(e))
     finally:
         browser.quit()
         browser_login.quit()
 
     # DB 연결 해제
     con.close()
-    print("crawl_youtube.py 종료")
+    log_debug("crawl_youtube.py 종료")
