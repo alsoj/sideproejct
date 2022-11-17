@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 import Config
 import unicodedata
 from openpyxl import load_workbook
-from Common import get_app_id
+from Common import get_app_id, get_short_code
 import requests
 
 class LikerWorker(QThread):
@@ -24,21 +24,24 @@ class LikerWorker(QThread):
             code_list = self.get_target_post()
 
         for index, code in enumerate(code_list):
-            sheet_num = index + 1
-            self.parent.info(f"{sheet_num}번 째 게시글 추출을 시작합니다.")
-            self.get_likers(self.parent.browser, code, sheet_num+1)
+            if len(code) > 0:
+                sheet_num = index + 1
+                self.parent.info(f"{sheet_num}번 째 게시글 추출을 시작합니다.")
+                self.get_likers(self.parent.browser, code, sheet_num)
 
         # 최근 게시물 조회
         self.parent.info("최근 게시물 크롤링이 종료 되었습니다.")
         self.parent.button_activate(True)
 
     def get_target_post(self):
-        url1 = self.parent.edit_url1.text()
-        self.parent.edit_url2.text()
-        self.parent.edit_url3.text()
-        self.parent.edit_url4.text()
-        self.parent.edit_url5.text()
-        self.parent.edit_url6.text()
+        url1 = get_short_code(self.parent.edit_url1.text())
+        url2 = get_short_code(self.parent.edit_url2.text())
+        url3 = get_short_code(self.parent.edit_url3.text())
+        url4 = get_short_code(self.parent.edit_url4.text())
+        url5 = get_short_code(self.parent.edit_url5.text())
+        url6 = get_short_code(self.parent.edit_url6.text())
+        code_list = [url1, url2, url3, url4, url5, url6]
+        return code_list
 
     # 좋아요 추출
     def get_likers(self, browser, short_code, sheet_num):

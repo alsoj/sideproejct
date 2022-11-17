@@ -1,3 +1,4 @@
+import os
 import sys
 from time import sleep
 
@@ -6,8 +7,7 @@ from PyQt6 import uic
 
 from datetime import datetime
 from Common import execute_browser
-from Login import LoginWorker
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 
 from instagram import Config
 from instagram.Liker import LikerWorker
@@ -60,7 +60,7 @@ class INSTA_Window(QMainWindow, form_class):
             self.error("인스타그램 ID와 PW를 입력해주세요.")
 
         self.browser.get(Config.LOGIN_URL)
-        sleep(3)
+        sleep(2)
 
         if 'accounts' in self.browser.current_url:
             inputs = self.browser.find_elements(by=By.TAG_NAME, value='input')
@@ -69,7 +69,7 @@ class INSTA_Window(QMainWindow, form_class):
             inputs[0].send_keys(self.login_id)
             inputs[1].send_keys(self.login_pw)
             inputs[1].submit()
-            sleep(3)
+            sleep(2)
 
             if '잘못된 비밀번호' in self.browser.page_source:
                 self.error('잘못된 비밀번호입니다.')
@@ -107,7 +107,7 @@ class INSTA_Window(QMainWindow, form_class):
     # 디버그 로그 출력
     def debug(self, text):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.log_browser.append(f"[{now}] " + text)
+        self.log_browser.append(f'<p>[{now}] {text}</p>')
 
     # 정보 로그 출력(초록색)
     def info(self, text):
@@ -124,7 +124,7 @@ class INSTA_Window(QMainWindow, form_class):
         if hasattr(self, 'browser') and self.browser is not None:
             self.browser.quit()
 
-def create_excel(filename):
+def create_excel(file_name):
     wb = Workbook()
     wb.create_sheet('게시글1', 0)
     wb.create_sheet('게시글2', 1)
@@ -149,7 +149,10 @@ def create_excel(filename):
         ws5.cell(row=1, column=j).value = kwd
         ws6.cell(row=1, column=j).value = kwd
 
-    wb.save(Config.FILE_PATH + filename)
+    file_path = Config.FILE_PATH
+    if not os.path.isdir(file_path):
+        os.mkdir(file_path)
+    wb.save(file_path + file_name)
 
 
 if __name__ == "__main__":

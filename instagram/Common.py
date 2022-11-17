@@ -7,13 +7,11 @@ import re
 # 브라우저 실행
 def execute_browser():
     options = webdriver.ChromeOptions()
-    # options.add_argument("headless")
-
+    options.add_argument("headless")
     if 'macOS' in platform.platform():
         browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
     else:
         browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
     return browser
 
 # 인스타그램 app id 추출
