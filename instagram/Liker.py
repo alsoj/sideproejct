@@ -23,11 +23,29 @@ class LikerWorker(QThread):
         else:
             code_list = self.get_target_post()
 
+        total_user = {}
+        crawl_count = 0
         for index, code in enumerate(code_list):
             if len(code) > 0:
+                crawl_count += 1
                 sheet_num = index + 1
                 self.parent.info(f"{sheet_num}번 째 게시글 추출을 시작합니다.")
-                self.get_likers(self.parent.browser, code, sheet_num)
+                user_list = self.get_likers(self.parent.browser, code, sheet_num)
+                for user in user_list:
+                    if user in total_user.keys():
+                        total_user[user] += 1
+                    else:
+                        total_user[user] = 1
+
+        file_path_name = Config.FILE_PATH + self.parent.file_name
+        common_user = [k for k, v in total_user.items() if v == crawl_count]
+        wb = load_workbook(file_path_name, data_only=True)
+        ws = wb['공통 사용자']
+        rownum = 0
+        for user in common_user:
+            rownum += 1
+            ws.append([rownum, user])
+        wb.save(file_path_name)
 
         # 최근 게시물 조회
         self.parent.info("최근 게시물 크롤링이 종료 되었습니다.")
@@ -52,6 +70,7 @@ class LikerWorker(QThread):
         file_path_name = Config.FILE_PATH + self.parent.file_name
         wb = load_workbook(file_path_name, data_only=True)
         ws = wb['게시글'+str(sheet_num)]
+        user_list = []
 
         while has_next_page:
             variables['after'] = end_cursor
@@ -69,12 +88,15 @@ class LikerWorker(QThread):
 
             for liker in likers:
                 rownum += 1
+                user_list.append(liker['node']['username'])
                 ws.append([short_code, rownum, liker['node']['username'], unicodedata.normalize('NFC', liker['node']['full_name'])])
                 if rownum % 50 == 0:
                     self.parent.debug(f'{rownum}번째 데이터 추출 완료')
                     wb.save(file_path_name)
 
         wb.save(file_path_name)
+
+        return user_list
 
 
 def get_recent_post(browser, user_id):

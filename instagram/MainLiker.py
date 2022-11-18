@@ -9,8 +9,8 @@ from datetime import datetime
 from Common import execute_browser
 from openpyxl import Workbook
 
-from instagram import Config
-from instagram.Liker import LikerWorker
+import Config
+from Liker import LikerWorker
 from selenium.webdriver.common.by import By
 
 form_class = uic.loadUiType("crawl_liker.ui")[0]
@@ -20,6 +20,7 @@ class INSTA_Window(QMainWindow, form_class):
         self.setupUi(self)
         self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
         self.btn_start_target.clicked.connect(self.btn_start_target_clicked)  # 특정 게시물 크롤링
+        self.scroll_bar = self.log_browser.verticalScrollBar()
         self.browser = execute_browser()
         self.liker_worker = LikerWorker(self)
         self.login_id = None
@@ -58,6 +59,7 @@ class INSTA_Window(QMainWindow, form_class):
         if self.login_id is None or self.login_pw is None \
                 or len(self.login_id) == 0 or len(self.login_pw) == 0:
             self.error("인스타그램 ID와 PW를 입력해주세요.")
+            return False
 
         self.browser.get(Config.LOGIN_URL)
         sleep(2)
@@ -108,16 +110,19 @@ class INSTA_Window(QMainWindow, form_class):
     def debug(self, text):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f'<p>[{now}] {text}</p>')
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     # 정보 로그 출력(초록색)
     def info(self, text):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f'<p style="color:green">[{now}] {text}</p>')
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     # 에러 로그 출력(빨간색)
     def error(self, text):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.log_browser.append(f'<p style="color:red">[{now}] {text}</p>')
+        self.scroll_bar.setValue(self.scroll_bar.maximum())
 
     # 종료 이벤트
     def closeEvent(self, QCloseEvent):
@@ -132,6 +137,7 @@ def create_excel(file_name):
     wb.create_sheet('게시글4', 3)
     wb.create_sheet('게시글5', 4)
     wb.create_sheet('게시글6', 5)
+    wb.create_sheet('공통 사용자', 6)
 
     ws1 = wb['게시글1']
     ws2 = wb['게시글2']
@@ -139,6 +145,7 @@ def create_excel(file_name):
     ws4 = wb['게시글4']
     ws5 = wb['게시글5']
     ws6 = wb['게시글6']
+    ws7 = wb['공통 사용자']
 
     sub_liker = ['구분', '번호', '사용자ID', '사용자명']
     for kwd, j in zip(sub_liker, list(range(1, len(sub_liker) + 1))):
@@ -148,6 +155,10 @@ def create_excel(file_name):
         ws4.cell(row=1, column=j).value = kwd
         ws5.cell(row=1, column=j).value = kwd
         ws6.cell(row=1, column=j).value = kwd
+
+    sub_total = ['번호', '사용자ID']
+    for kwd, j in zip(sub_total, list(range(1, len(sub_total) + 1))):
+        ws7.cell(row=1, column=j).value = kwd
 
     file_path = Config.FILE_PATH
     if not os.path.isdir(file_path):
