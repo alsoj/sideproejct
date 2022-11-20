@@ -21,6 +21,9 @@ class INSTA_Window(QMainWindow, form_class):
         self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
         self.btn_start_target.clicked.connect(self.btn_start_target_clicked)  # 특정 게시물 크롤링
         self.scroll_bar = self.log_browser.verticalScrollBar()
+        self.log_browser.append(" - 추출 결과는 output 폴더 하위에 저장됩니다.")
+        self.log_browser.append(" - 게시글 URL 예시) https://www.instagram.com/p/Cf-vUAcLS8K/")
+        self.log_browser.append(" - 과도한 크롤링은 인스타그램에서 제한될 수 있습니다.")
         self.browser = execute_browser()
         self.liker_worker = LikerWorker(self)
         self.login_id = None
@@ -96,9 +99,14 @@ class INSTA_Window(QMainWindow, form_class):
 
     # 파일명 세팅
     def set_file_name(self, crawl_type):
-        now = datetime.now().strftime('%Y%m%d%H%M%S')
-        type_name = '최근' if crawl_type == 'recent' else '특정'
-        file_name = f'{now}_{type_name} 게시물 좋아요 추출.xlsx'
+        input_file_name = self.edit_file_name.text()
+        if len(input_file_name) > 0:
+            file_name = input_file_name + '.xlsx'
+        else:
+            now = datetime.now().strftime('%Y%m%d%H%M%S')
+            type_name = '최근' if crawl_type == 'recent' else '특정'
+            file_name = f'{now}_{type_name} 게시물 좋아요 추출.xlsx'
+
         self.file_name = file_name
 
     # 버튼 비활성화

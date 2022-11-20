@@ -47,8 +47,10 @@ class LikerWorker(QThread):
             ws.append([rownum, user])
         wb.save(file_path_name)
 
-        # 최근 게시물 조회
-        self.parent.info("최근 게시물 크롤링이 종료 되었습니다.")
+        if self.parent.crawl_type == 'recent':
+            self.parent.info("최근 게시물 크롤링이 종료 되었습니다.")
+        else:
+            self.parent.info("특정 게시물 크롤링이 종료 되었습니다.")
         self.parent.button_activate(True)
 
     def get_target_post(self):
@@ -82,17 +84,21 @@ class LikerWorker(QThread):
             content = browser.find_element(by=By.TAG_NAME, value='pre').text
             data = json.loads(content)
 
-            has_next_page = data['data']['shortcode_media']['edge_liked_by']['page_info']['has_next_page']
-            end_cursor = data['data']['shortcode_media']['edge_liked_by']['page_info']['end_cursor']
-            likers = data['data']['shortcode_media']['edge_liked_by']['edges']
+            if 'data' in data:
+                has_next_page = data['data']['shortcode_media']['edge_liked_by']['page_info']['has_next_page']
+                end_cursor = data['data']['shortcode_media']['edge_liked_by']['page_info']['end_cursor']
+                likers = data['data']['shortcode_media']['edge_liked_by']['edges']
 
-            for liker in likers:
-                rownum += 1
-                user_list.append(liker['node']['username'])
-                ws.append([short_code, rownum, liker['node']['username'], unicodedata.normalize('NFC', liker['node']['full_name'])])
-                if rownum % 50 == 0:
-                    self.parent.debug(f'{rownum}번째 데이터 추출 완료')
-                    wb.save(file_path_name)
+                for liker in likers:
+                    rownum += 1
+                    user_list.append(liker['node']['username'])
+                    ws.append([short_code, rownum, liker['node']['username'], unicodedata.normalize('NFC', liker['node']['full_name'])])
+                    if rownum % 50 == 0:
+                        self.parent.debug(f'{rownum}번째 데이터 추출 완료')
+                        wb.save(file_path_name)
+            else:
+                has_next_page = False
+                self.parent.error("비정상적인 응답이 발생했습니다. 접속 계정 제한 여부를 확인해주세요.")
 
         wb.save(file_path_name)
 
