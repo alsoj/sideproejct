@@ -1,16 +1,13 @@
+import datetime
+import platform
+
 import pymysql
 import viralc_config
 
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from seleniumwire import webdriver as webdriver_wire
-
-from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-
 
 def get_db_connection():
     """
@@ -44,8 +41,9 @@ def get_crawling_target(con, type):
     sql = \
         """
         SELECT content_url
-        FROM tb_content_keyword
-        WHERE content_url LIKE concat(%(base_url)s, '%%');
+        FROM tb_content
+        WHERE content_url LIKE concat(%(base_url)s, '%%')
+        and crawling_yn ='N'
         """
     cur.execute(sql, param)
     rows = cur.fetchall()
@@ -74,16 +72,20 @@ def merge_crawl_result(con, result):
     sql = \
         """
         INSERT INTO tb_content_crawling
-        (content_url, sns_type, empathy, comment, followers, pc_view_cnt, mo_view_cnt, insert_datetime) 
+        (content_crawling_seq, content_url, sns_type, empathy, comment, followers, pc_view_cnt, mo_view_cnt, insert_datetime) 
         VALUES
-        (%(content_url)s, %(sns_type)s, %(empathy)s, %(comment)s, %(followers)s, %(pc_view_cnt)s, %(mo_view_cnt)s, now())
-        ON DUPLICATE KEY UPDATE
-        empathy = %(empathy)s,
-        comment = %(comment)s,
-        followers = %(followers)s,
-        pc_view_cnt = %(pc_view_cnt)s,
-        mo_view_cnt = %(mo_view_cnt)s,
-        update_datetime = now()
+        (
+            (select coalesce(max(content_crawling_seq),0)+1 
+                from tb_content_crawling tb_seq),
+            %(content_url)s, 
+            %(sns_type)s, 
+            %(empathy)s, 
+            %(comment)s, 
+            %(followers)s, 
+            %(pc_view_cnt)s, 
+            %(mo_view_cnt)s, 
+            now()
+        )        
         """
 
     cur.execute(sql, result)
@@ -111,8 +113,10 @@ def get_selenium_wire():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver_wire.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
-    # browser = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
+    if 'macOS' in platform.platform():
+        browser = webdriver_wire.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
+    else:
+        browser = webdriver_wire.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
     return browser
 
 def get_selenium():
@@ -126,6 +130,17 @@ def get_selenium():
     options.add_argument("--disable-gpu")
     options.add_argument("--single-process")
     options.add_argument("--disable-dev-shm-usage")
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
-    # browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
+    if 'macOS' in platform.platform():
+        browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)  # LOCAL
+    else:
+        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)  # PROD
     return browser
+
+def log_debug(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [DEBUG] {text}")
+
+def log_info(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO ] {text}")
+
+def log_error(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {text}")
