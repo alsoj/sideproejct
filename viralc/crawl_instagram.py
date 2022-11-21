@@ -95,6 +95,14 @@ def get_instagram_info(browser, browser_login, post_id):
 
     return like_count, comment_count, follower_count
 
+def get_instagram_content_id(url):
+    """
+    인스타그램 게시물 ID 추출
+    :param url: 게시글 주소
+    :return: 게시물 code
+    """
+    return url.split('/')[4]
+
 
 if __name__ == "__main__":
     log_debug("crawl_instagram.py 실행")
@@ -122,7 +130,8 @@ if __name__ == "__main__":
             result['content_url'] = url
             result['sns_type'] = "I"
 
-            post_id = viralc_common.get_content_id(url)
+            post_id = get_instagram_content_id(url)
+            # post_id = viralc_common.get_content_id(url)
 
             # 크롤링 진행
             like_count, comment_count, follower_count = get_instagram_info(browser, browser_login, post_id)
