@@ -6,11 +6,13 @@ from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
 from datetime import datetime
+import Common
 from Common import execute_browser
 from openpyxl import Workbook
 
 import Config
 from Liker import LikerWorker
+from Login import LoginWorker
 from selenium.webdriver.common.by import By
 
 form_class = uic.loadUiType("LikeCommentCrawler.ui")[0]
@@ -18,31 +20,17 @@ class INSTA_Window(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
         self.btn_start_target.clicked.connect(self.btn_start_target_clicked)  # 특정 게시물 크롤링
-        self.scroll_bar = self.log_browser.verticalScrollBar()
+        self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
+        self.btn_start_comment.clicked.connect(self.btn_start_comment_clicked)  # 댓글 크롤링
         self.log_browser.append(" - 추출 결과는 output 폴더 하위에 저장됩니다.")
         self.log_browser.append(" - 게시글 URL 예시) https://www.instagram.com/p/Cf-vUAcLS8K/")
         self.log_browser.append(" - 과도한 크롤링은 인스타그램에서 제한될 수 있습니다.")
         self.browser = execute_browser()
+        self.login_worker = LoginWorker(self)
         self.liker_worker = LikerWorker(self)
-        self.login_id = None
-        self.login_pw = None
         self.file_name = None
         self.crawl_type = None
-
-    # 최근 게시물 클릭
-    def btn_start_recent_clicked(self):
-        self.info("최근 게시물 좋아요 추출을 시작합니다.")
-        self.button_activate(False)
-        self.set_id_pw()
-        if self.login():
-            self.set_file_name('recent')
-            create_excel(self.file_name)
-            self.crawl_type = 'recent'
-            self.liker_worker.start()
-        else:
-            self.button_activate(True)
 
     # 특정 게시물 클릭
     def btn_start_target_clicked(self):
@@ -57,45 +45,29 @@ class INSTA_Window(QMainWindow, form_class):
         else:
             self.button_activate(True)
 
-    # 로그인 처리
-    def login(self):
-        if self.login_id is None or self.login_pw is None \
-                or len(self.login_id) == 0 or len(self.login_pw) == 0:
-            self.error("인스타그램 ID와 PW를 입력해주세요.")
-            return False
+    # 최근 게시물 클릭
+    def btn_start_recent_clicked(self):
+        self.info("최근 게시물 좋아요 추출을 시작합니다.")
+        self.button_activate(False)
+        self.set_id_pw(self.login_worker)
 
-        self.browser.get(Config.LOGIN_URL)
-        sleep(2)
+        if self.login():
+            self.set_file_name('recent')
+            create_excel(self.file_name)
+            self.crawl_type = 'recent'
+            self.liker_worker.start()
+        else:
+            self.button_activate(True)
 
-        if 'accounts' in self.browser.current_url:
-            inputs = self.browser.find_elements(by=By.TAG_NAME, value='input')
-            inputs[0].clear()
-            inputs[1].clear()
-            inputs[0].send_keys(self.login_id)
-            inputs[1].send_keys(self.login_pw)
-            inputs[1].submit()
-            sleep(2)
-
-            if '잘못된 비밀번호' in self.browser.page_source:
-                self.error('잘못된 비밀번호입니다.')
-                return False
-            elif '입력한 사용자 이름' in self.browser.page_source:
-                self.error('잘못된 사용자 ID입니다.')
-                return False
-            elif '문제가 발생' in self.browser.page_source:
-                self.error('일시적인 문제가 발생하였습니다.')
-                return False
-            else:
-                self.info(f'로그인에 성공했습니다. ID : {self.login_id}')
-                return True
-
-        else:  # 이미 로그인된 상태
-            return True
+    def btn_start_comment_clicked(self):
+        Common.info(self.log_browser, "댓글 추출을 시작합니다.")
+        self.set_id_pw()
+        self.login_worker.start()
 
     # ID/PW 세팅
     def set_id_pw(self):
-        self.login_id = self.edit_id.text()
-        self.login_pw = self.edit_pw.text()
+        self.login_worker.set_login_id(self.edit_id.text())
+        self.login_worker.set_login_pw(self.edit_pw.text())
 
     # 파일명 세팅
     def set_file_name(self, crawl_type):
@@ -111,26 +83,9 @@ class INSTA_Window(QMainWindow, form_class):
 
     # 버튼 비활성화
     def button_activate(self, enable):
-        self.btn_start_recent.setEnabled(enable)
         self.btn_start_target.setEnabled(enable)
-
-    # 디버그 로그 출력
-    def debug(self, text):
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.log_browser.append(f'<p>[{now}] {text}</p>')
-        self.scroll_bar.setValue(self.scroll_bar.maximum())
-
-    # 정보 로그 출력(초록색)
-    def info(self, text):
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.log_browser.append(f'<p style="color:green">[{now}] {text}</p>')
-        self.scroll_bar.setValue(self.scroll_bar.maximum())
-
-    # 에러 로그 출력(빨간색)
-    def error(self, text):
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.log_browser.append(f'<p style="color:red">[{now}] {text}</p>')
-        self.scroll_bar.setValue(self.scroll_bar.maximum())
+        self.btn_start_recent.setEnabled(enable)
+        self.btn_start_comment.setEnabled(enable)
 
     # 종료 이벤트
     def closeEvent(self, QCloseEvent):

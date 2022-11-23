@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from selenium import webdriver
 import platform
 from selenium.webdriver.chrome.service import Service
@@ -7,7 +9,7 @@ import re
 # 브라우저 실행
 def execute_browser():
     options = webdriver.ChromeOptions()
-    options.add_argument("headless")
+    # options.add_argument("headless")
     if 'macOS' in platform.platform():
         browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
     else:
@@ -29,3 +31,24 @@ def get_short_code(target_url):
         short_code = ''
     finally:
         return short_code
+
+# 디버그 로그 출력
+def debug(log_browser, text):
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_browser.append(f'<p>[{now}] {text}</p>')
+    scroll_bar = log_browser.verticalScrollBar()
+    scroll_bar.setValue(scroll_bar.maximum())
+
+# 정보 로그 출력(초록색)
+def info(log_browser, text):
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_browser.append(f'<p style="color:green">[{now}] {text}</p>')
+    scroll_bar = log_browser.verticalScrollBar()
+    scroll_bar.setValue(scroll_bar.maximum())
+
+# 에러 로그 출력(빨간색)
+def error(log_browser, text):
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_browser.append(f'<p style="color:red">[{now}] {text}</p>')
+    scroll_bar = log_browser.verticalScrollBar()
+    scroll_bar.setValue(scroll_bar.maximum())
