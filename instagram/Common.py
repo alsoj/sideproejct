@@ -9,7 +9,7 @@ import re
 # 브라우저 실행
 def execute_browser():
     options = webdriver.ChromeOptions()
-    # options.add_argument("headless")
+    options.add_argument("headless")
     if 'macOS' in platform.platform():
         browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
     else:
@@ -18,9 +18,9 @@ def execute_browser():
 
 # 인스타그램 app id 추출
 def get_app_id(res_text):
-    prog = re.compile('"\d{15}"')
+    prog = re.compile('"X-IG-App-ID":"\d{15}"')
     result = prog.findall(res_text)
-    return result[0].replace('"','')
+    return result[0].replace('"','').replace("X-IG-App-ID:","")
 
 # 게시글 URL에서 코드 추출
 def get_short_code(target_url):
@@ -31,6 +31,16 @@ def get_short_code(target_url):
         short_code = ''
     finally:
         return short_code
+
+# 미디어 ID 추출
+def get_media_id(res_text):
+    prog = re.compile('"media_id":"\d{19}"')
+    result = prog.findall(res_text)
+    return result[0].replace('"','').replace("media_id:","")
+
+# 유닉스 타임 -> 날짜형식 변환
+def get_datetime(unixtimestamp):
+    return datetime.utcfromtimestamp(int(unixtimestamp)).strftime('%Y-%m-%d %H:%M:%S')
 
 # 디버그 로그 출력
 def debug(log_browser, text):

@@ -8,12 +8,14 @@ from PyQt6 import uic
 from datetime import datetime
 import Common
 from Common import execute_browser
-from openpyxl import Workbook
+
+from ExcelExport import create_excel, write_excel
 
 import Config
-from Liker import LikerWorker
 from Login import LoginWorker
-from selenium.webdriver.common.by import By
+from Comment import CommentWorker
+from Timeline import TimelineWorker
+from Media import MediaWorker
 
 form_class = uic.loadUiType("LikeCommentCrawler.ui")[0]
 class INSTA_Window(QMainWindow, form_class):
@@ -23,65 +25,115 @@ class INSTA_Window(QMainWindow, form_class):
         self.btn_start_target.clicked.connect(self.btn_start_target_clicked)  # 특정 게시물 크롤링
         self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
         self.btn_start_comment.clicked.connect(self.btn_start_comment_clicked)  # 댓글 크롤링
+
         self.log_browser.append(" - 추출 결과는 output 폴더 하위에 저장됩니다.")
         self.log_browser.append(" - 게시글 URL 예시) https://www.instagram.com/p/Cf-vUAcLS8K/")
         self.log_browser.append(" - 과도한 크롤링은 인스타그램에서 제한될 수 있습니다.")
+
         self.browser = execute_browser()
+
         self.login_worker = LoginWorker(self)
-        self.liker_worker = LikerWorker(self)
-        self.file_name = None
-        self.crawl_type = None
+        self.comment_worker = CommentWorker(self)
+        self.recent_worker = TimelineWorker(self)
+        self.media_worker = MediaWorker(self)
+        self.callback_function = None
+
+        self.comment_list = None
+        self.comment_short_code = None
+        self.recent_list = None
+        self.recent_user_id = None
+        self.target_list = None
+        self.target_short_code = None
+
+    def callback(self):
+
+        # 댓글 추출 관련 콜백
+        if self.callback_function == 'crawl_comment':
+            self.crawl_comment()
+        elif self.callback_function == 'export_excel_comment':
+            filename = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_댓글 추출.xlsx'
+            create_excel('comment', filename)
+            write_excel(self.comment_list, filename)
+            self.button_activate(True)
+            Common.debug(self.log_browser, f"댓글 추출 파일 명 : {filename}")
+            Common.info(self.log_browser, f"댓글 추출이 완료 되었습니다.")
+
+        # 최근 게시물 추출 관련 콜백
+        elif self.callback_function == 'crawl_recent':
+            self.crawl_recent()
+        elif self.callback_function == 'export_excel_recent':
+            filename = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_최근 게시물 추출.xlsx'
+            create_excel('timeline', filename)
+            write_excel(self.recent_list, filename)
+            self.button_activate(True)
+            Common.debug(self.log_browser, f"최근 게시물 추출 파일 명 : {filename}")
+            Common.info(self.log_browser, f"최근 게시물 추출이 완료 되었습니다.")
+
+        # 특정 게시물 관련 콜백
+        elif self.callback_function == 'crawl_target':
+            self.crawl_target()
+        elif self.callback_function == 'export_excel_target':
+            filename = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_특정 게시물 추출.xlsx'
+            create_excel('timeline', filename)
+            write_excel(self.target_list, filename)
+            self.button_activate(True)
+            Common.debug(self.log_browser, f"특정 게시물 추출 파일 명 : {filename}")
+            Common.info(self.log_browser, f"특정 게시물 추출이 완료 되었습니다.")
 
     # 특정 게시물 클릭
     def btn_start_target_clicked(self):
-        self.info("특정 게시물 좋아요 추출을 시작합니다.")
         self.button_activate(False)
+        Common.info(self.log_browser, "특정 게시물 크롤링을 시작합니다.")
         self.set_id_pw()
-        if self.login():
-            self.set_file_name('target')
-            create_excel(self.file_name)
-            self.crawl_type = 'target'
-            self.liker_worker.start()
-        else:
-            self.button_activate(True)
-
-    # 최근 게시물 클릭
-    def btn_start_recent_clicked(self):
-        self.info("최근 게시물 좋아요 추출을 시작합니다.")
-        self.button_activate(False)
-        self.set_id_pw(self.login_worker)
-
-        if self.login():
-            self.set_file_name('recent')
-            create_excel(self.file_name)
-            self.crawl_type = 'recent'
-            self.liker_worker.start()
-        else:
-            self.button_activate(True)
-
-    def btn_start_comment_clicked(self):
-        Common.info(self.log_browser, "댓글 추출을 시작합니다.")
-        self.set_id_pw()
+        self.callback_function = 'crawl_target'
         self.login_worker.start()
+
+    # 특정 게시물 크롤링
+    def crawl_target(self):
+        self.button_activate(False)
+        self.callback_function = 'export_excel_target'
+        self.target_list = None
+        self.target_short_code = Common.get_short_code(self.edit_target.text())
+        self.media_worker.start()
+
+    # 최근 게시물 크롤링 클릭
+    def btn_start_recent_clicked(self):
+        self.button_activate(False)
+        Common.info(self.log_browser, "최근 게시물 크롤링을 시작합니다.")
+        self.set_id_pw()
+        self.callback_function = 'crawl_recent'
+        self.login_worker.start()
+
+    # 최신 게시물 크롤링
+    def crawl_recent(self):
+        self.button_activate(False)
+        self.callback_function = 'export_excel_recent'
+        self.recent_list = None
+        self.recent_user_id = self.edit_recent.text()
+        self.recent_worker.start()
+
+    # 댓글 크롤링 버튼 클릭
+    def btn_start_comment_clicked(self):
+        self.button_activate(False)
+        Common.info(self.log_browser, "댓글 크롤링을 시작합니다.")
+        self.set_id_pw()
+        self.callback_function = 'crawl_comment'
+        self.login_worker.start()
+
+    # 댓글 추출
+    def crawl_comment(self):
+        self.button_activate(False)
+        self.callback_function = 'export_excel_comment'
+        self.comment_list = None
+        self.comment_short_code = Common.get_short_code(self.edit_comment_url.text())
+        self.comment_worker.start()
 
     # ID/PW 세팅
     def set_id_pw(self):
         self.login_worker.set_login_id(self.edit_id.text())
         self.login_worker.set_login_pw(self.edit_pw.text())
 
-    # 파일명 세팅
-    def set_file_name(self, crawl_type):
-        input_file_name = self.edit_file_name.text()
-        if len(input_file_name) > 0:
-            file_name = input_file_name + '.xlsx'
-        else:
-            now = datetime.now().strftime('%Y%m%d%H%M%S')
-            type_name = '최근' if crawl_type == 'recent' else '특정'
-            file_name = f'{now}_{type_name} 게시물 좋아요 추출.xlsx'
-
-        self.file_name = file_name
-
-    # 버튼 비활성화
+    # 버튼 활성/비활성화
     def button_activate(self, enable):
         self.btn_start_target.setEnabled(enable)
         self.btn_start_recent.setEnabled(enable)
@@ -91,42 +143,6 @@ class INSTA_Window(QMainWindow, form_class):
     def closeEvent(self, QCloseEvent):
         if hasattr(self, 'browser') and self.browser is not None:
             self.browser.quit()
-
-def create_excel(file_name):
-    wb = Workbook()
-    wb.create_sheet('게시글1', 0)
-    wb.create_sheet('게시글2', 1)
-    wb.create_sheet('게시글3', 2)
-    wb.create_sheet('게시글4', 3)
-    wb.create_sheet('게시글5', 4)
-    wb.create_sheet('게시글6', 5)
-    wb.create_sheet('공통 사용자', 6)
-
-    ws1 = wb['게시글1']
-    ws2 = wb['게시글2']
-    ws3 = wb['게시글3']
-    ws4 = wb['게시글4']
-    ws5 = wb['게시글5']
-    ws6 = wb['게시글6']
-    ws7 = wb['공통 사용자']
-
-    sub_liker = ['구분', '번호', '사용자ID', '사용자명']
-    for kwd, j in zip(sub_liker, list(range(1, len(sub_liker) + 1))):
-        ws1.cell(row=1, column=j).value = kwd
-        ws2.cell(row=1, column=j).value = kwd
-        ws3.cell(row=1, column=j).value = kwd
-        ws4.cell(row=1, column=j).value = kwd
-        ws5.cell(row=1, column=j).value = kwd
-        ws6.cell(row=1, column=j).value = kwd
-
-    sub_total = ['번호', '사용자ID']
-    for kwd, j in zip(sub_total, list(range(1, len(sub_total) + 1))):
-        ws7.cell(row=1, column=j).value = kwd
-
-    file_path = Config.FILE_PATH
-    if not os.path.isdir(file_path):
-        os.mkdir(file_path)
-    wb.save(file_path + file_name)
 
 
 if __name__ == "__main__":
