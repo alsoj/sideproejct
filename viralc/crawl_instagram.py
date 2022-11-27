@@ -6,6 +6,7 @@ import json
 import viralc_config
 import viralc_common
 from viralc_common import log_debug, log_info, log_error
+import re
 
 def login_instagram(browser, id, password):
     """
@@ -64,24 +65,25 @@ def get_data(browser, api_url):
     API 호출하여 게시물 정보 추출
     :param browser: 웹 드라이버
     :param api_url: API 주소
-    :return: 좋아요 수, 댓글 수, 팔로워 수
+    :return: 좋아요 수, 댓글 수, 팔로워 수, 본문 내용
     """
-    like_cnt = ''
-    comment_cnt = ''
-    follower_cnt = ''
+    like_cnt, comment_cnt, follower_cnt, contents = '', '', '', ''
 
     try:
         browser.get(api_url)
         content = browser.find_element(by=By.TAG_NAME, value='pre').text
         data = json.loads(content)
+
         media = data['data']['shortcode_media']
         like_cnt = media['edge_media_preview_like']['count']  # 좋아요
         comment_cnt = media['edge_media_preview_comment']['count']  # 코멘트
         follower_cnt = media['owner']['edge_followed_by']['count']  # 팔로워
+        contents = media['edge_media_to_caption']['edges'][0]['node']['text']  # 본문 내용
+        contents = re.sub(r'[^\w\s~!@#$%^&*()-_=+]', '', contents)
     except Exception as e:
         log_error("get_data 실행 중 오류 발생 : " + str(e))
     finally:
-        return like_cnt, comment_cnt, follower_cnt
+        return like_cnt, comment_cnt, follower_cnt, contents
 
 def get_instagram_info(browser, browser_login, post_id):
     """
@@ -90,10 +92,10 @@ def get_instagram_info(browser, browser_login, post_id):
     :return: 좋아요, 댓글, 구독자, 조회 수
     """
     api_url = get_api_url(browser, post_id)
-    like_count, comment_count, follower_count = get_data(browser_login, api_url)
+    like_count, comment_count, follower_count, contents = get_data(browser_login, api_url)
     log_info(f"ID={post_id}, LIKE={like_count}, COMMENT={comment_count}, FOLLOWER={follower_count}")
 
-    return like_count, comment_count, follower_count
+    return like_count, comment_count, follower_count, contents
 
 def get_instagram_content_id(url):
     """
@@ -125,7 +127,7 @@ if __name__ == "__main__":
         else:
             log_info(f"인스타그램 로그인에 성공했습니다. 계정 : {login_id}")
 
-        for url in url_list:
+        for content_seq, url in url_list:
             result = viralc_common.get_reuslt_dict()
             result['content_url'] = url
             result['sns_type'] = "I"
@@ -134,13 +136,20 @@ if __name__ == "__main__":
             # post_id = viralc_common.get_content_id(url)
 
             # 크롤링 진행
-            like_count, comment_count, follower_count = get_instagram_info(browser, browser_login, post_id)
+            like_count, comment_count, follower_count, contents = get_instagram_info(browser, browser_login, post_id)
             result['empathy'] = like_count
             result['comment'] = comment_count
             result['followers'] = follower_count
 
             # 대상 업데이트(DB)
             viralc_common.merge_crawl_result(con, result)
+
+            # 본문 내용 UPDATE
+            update_result = {
+                'contents': contents,
+                'content_seq': content_seq
+            }
+            viralc_common.update_instagram_result(con, update_result)
     except Exception as e:
         log_error("main 실행 중 오류 발생 : " + str(e))
     finally:

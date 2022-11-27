@@ -40,7 +40,7 @@ def get_crawling_target(con, type):
     cur = con.cursor()
     sql = \
         """
-        SELECT content_url
+        SELECT content_seq, content_url
         FROM tb_content
         WHERE content_url LIKE concat(%(base_url)s, '%%')
         and crawling_yn ='N'
@@ -50,9 +50,8 @@ def get_crawling_target(con, type):
 
     url_list = []
     for row in rows:
-        url_list.append(row[0])
+        url_list.append(row)
     return url_list
-
 
 def get_reuslt_dict():
     result = {
@@ -86,6 +85,43 @@ def merge_crawl_result(con, result):
             %(mo_view_cnt)s, 
             now()
         )        
+        """
+
+    cur.execute(sql, result)
+    con.commit()
+
+def update_naver_result(con, result):
+    cur = con.cursor()
+    sql = \
+        """
+        UPDATE tb_content
+        SET img_cnt = %(img_cnt)s
+        , content_length = %(content_length)s
+        WHERE content_seq = %(content_seq)s
+        """
+
+    cur.execute(sql, result)
+    con.commit()
+
+def update_instagram_result(con, result):
+    cur = con.cursor()
+    sql = \
+        """
+        UPDATE tb_content
+        SET contents = %(contents)s    
+        WHERE content_seq = %(content_seq)s
+        """
+
+    cur.execute(sql, result)
+    con.commit()
+
+def update_youtube_result(con, result):
+    cur = con.cursor()
+    sql = \
+        """
+        UPDATE tb_content
+        SET content_title = %(content_title)s    
+        WHERE content_seq = %(content_seq)s
         """
 
     cur.execute(sql, result)

@@ -5,8 +5,8 @@ from viralc_common import log_debug, log_info, log_error
 from time import sleep
 
 def get_naver_info(browser, url):
-    like_count = ''
-    comment_count = ''
+    like_count, comment_count, img_cnt, content_length = '', '', '', ''
+
     try:
         browser.get(url)
         sleep(1)
@@ -21,10 +21,15 @@ def get_naver_info(browser, url):
             like_count = 0
         comment_count = browser.find_element(by=By.ID, value='commentCount').text.strip()
         comment_count = comment_count if len(comment_count) > 0 else 0
+
+        main_container = browser.find_element(by=By.CLASS_NAME, value='se-main-container')
+        img_cnt = len(main_container.find_elements(by=By.TAG_NAME, value='img'))
+        content_length = len(main_container.text)
+
     except Exception as e:
         log_error(e)
     finally:
-        return str(like_count), str(comment_count)
+        return str(like_count), str(comment_count), str(img_cnt), str(content_length)
 
 
 if __name__ == "__main__":
@@ -39,19 +44,27 @@ if __name__ == "__main__":
 
     browser = viralc_common.get_selenium()
     try:
-        for url in url_list:
+        for content_seq, url in url_list:
             result = viralc_common.get_reuslt_dict()
             result['content_url'] = url
             result['sns_type'] = "N"
 
             # 크롤링 진행
-            like_count, comment_count = get_naver_info(browser, url)
+            like_count, comment_count, img_cnt, content_length = get_naver_info(browser, url)
             result['empathy'] = like_count
             result['comment'] = comment_count
-            log_info(f"{url}, 공감 수 : {like_count}, 댓글 수 : {comment_count}")
+            log_info(f"{url}, 공감 수 : {like_count}, 댓글 수 : {comment_count}, 이미지 수 : {img_cnt}, 글자 수 : {content_length}")
 
             # 대상 업데이트(DB)
             viralc_common.merge_crawl_result(con, result)
+
+            # 이미지 수, 컨텐츠 길이 UPDATE
+            update_result = {
+                'img_cnt': img_cnt,
+                'content_length': content_length,
+                'content_seq': content_seq
+            }
+            viralc_common.update_naver_result(con, update_result)
     except Exception as e:
         log_error(e)
     finally:
