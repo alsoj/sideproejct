@@ -16,7 +16,8 @@ class CommentWorker(QThread):
         self.parent = parent
 
     def run(self):
-        self.parent.comment_list = get_comments(self.parent.browser, self.parent.comment_short_code)
+        for short_code in self.parent.comment_short_code_list:
+            self.parent.comment_list.append(get_comments(self.parent.browser, short_code))
         self.parent.callback()
 
 # 댓글 추출

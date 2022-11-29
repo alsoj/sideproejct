@@ -1,6 +1,6 @@
 import os
 import sys
-from time import sleep
+import re
 
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
@@ -10,6 +10,7 @@ import Common
 from Common import execute_browser
 
 from ExcelExport import create_excel, write_excel
+from openpyxl import Workbook, load_workbook
 
 import Config
 from Login import LoginWorker
@@ -38,12 +39,12 @@ class INSTA_Window(QMainWindow, form_class):
         self.media_worker = MediaWorker(self)
         self.callback_function = None
 
-        self.comment_list = None
-        self.comment_short_code = None
+        self.comment_list = []
+        self.comment_short_code_list = []
         self.recent_list = None
         self.recent_user_id = None
-        self.target_list = None
-        self.target_short_code = None
+        self.target_list = []
+        self.target_short_code_list = []
 
     def callback(self):
 
@@ -53,8 +54,16 @@ class INSTA_Window(QMainWindow, form_class):
         elif self.callback_function == 'export_excel_comment':
             filename = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_댓글 추출.xlsx'
             create_excel('comment', filename)
-            write_excel(self.comment_list, filename)
+            count_dict = {}
+            for comment_list in self.comment_list:
+                write_excel(comment_list, filename)
+                write_excel([['********************************************************']], filename)
+
+                for comment in comment_list:
+                    count_dict = count_word(count_dict, comment[3])
+            write_excel_count(count_dict, filename)
             self.button_activate(True)
+            Common.debug(self.log_browser, f"저장 경로 : {os.getcwd() + Config.FILE_PATH.replace('.','')}")
             Common.debug(self.log_browser, f"댓글 추출 파일 명 : {filename}")
             Common.info(self.log_browser, f"댓글 추출이 완료 되었습니다.")
 
@@ -66,6 +75,7 @@ class INSTA_Window(QMainWindow, form_class):
             create_excel('timeline', filename)
             write_excel(self.recent_list, filename)
             self.button_activate(True)
+            Common.debug(self.log_browser, f"저장 경로 : {os.getcwd() + Config.FILE_PATH.replace('.','')}")
             Common.debug(self.log_browser, f"최근 게시물 추출 파일 명 : {filename}")
             Common.info(self.log_browser, f"최근 게시물 추출이 완료 되었습니다.")
 
@@ -77,6 +87,7 @@ class INSTA_Window(QMainWindow, form_class):
             create_excel('timeline', filename)
             write_excel(self.target_list, filename)
             self.button_activate(True)
+            Common.debug(self.log_browser, f"저장 경로 : {os.getcwd() + Config.FILE_PATH.replace('.','')}")
             Common.debug(self.log_browser, f"특정 게시물 추출 파일 명 : {filename}")
             Common.info(self.log_browser, f"특정 게시물 추출이 완료 되었습니다.")
 
@@ -92,8 +103,11 @@ class INSTA_Window(QMainWindow, form_class):
     def crawl_target(self):
         self.button_activate(False)
         self.callback_function = 'export_excel_target'
-        self.target_list = None
-        self.target_short_code = Common.get_short_code(self.edit_target.text())
+        self.target_list = []
+        self.target_short_code_list = []
+        for index, target_url in enumerate(self.edit_target.toPlainText().split("\n")):
+            if index < 6:
+                self.target_short_code_list.append(Common.get_short_code(target_url))
         self.media_worker.start()
 
     # 최근 게시물 크롤링 클릭
@@ -124,8 +138,11 @@ class INSTA_Window(QMainWindow, form_class):
     def crawl_comment(self):
         self.button_activate(False)
         self.callback_function = 'export_excel_comment'
-        self.comment_list = None
-        self.comment_short_code = Common.get_short_code(self.edit_comment_url.text())
+        self.comment_list = []
+        self.comment_short_code_list = []
+        for index, target_url in enumerate(self.edit_comment.toPlainText().split("\n")):
+            if index < 6:
+                self.comment_short_code_list.append(Common.get_short_code(target_url))
         self.comment_worker.start()
 
     # ID/PW 세팅
@@ -144,6 +161,31 @@ class INSTA_Window(QMainWindow, form_class):
         if hasattr(self, 'browser') and self.browser is not None:
             self.browser.quit()
 
+def count_word(count_dict, text):
+    for word in re.sub(r'[^\w\s]', ' ', text).split(' '):
+        if len(word) > 0:
+            if word.endswith('은') \
+                or word.endswith('는') \
+                or word.endswith('이') \
+                or word.endswith('가') \
+                or word.endswith('을') \
+                or word.endswith('를') :
+                word = word[:-1]
+            if word in count_dict:
+                count_dict[word] += 1
+            else:
+                count_dict[word] = 1
+    return count_dict
+
+# 엑셀 입력(단어 카운팅)
+def write_excel_count(count_dict, filename):
+    file_path_name = Config.FILE_PATH + filename
+    wb = load_workbook(file_path_name, data_only=True)
+    ws = wb.active
+
+    for (key, value) in count_dict.items():
+        ws.append([key, value])
+    wb.save(file_path_name)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

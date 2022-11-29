@@ -3,12 +3,7 @@ from time import sleep
 from PyQt6.QtCore import QThread
 
 import Common
-import json
 
-from selenium.webdriver.common.by import By
-import Config
-import unicodedata
-from openpyxl import load_workbook
 from Common import get_datetime
 import requests
 
@@ -18,7 +13,8 @@ class MediaWorker(QThread):
         self.parent = parent
 
     def run(self):
-        self.parent.target_list = get_media(self.parent.browser, self.parent.target_short_code)
+        for target_short_code in self.parent.target_short_code_list:
+            self.parent.target_list.extend(get_media(self.parent.browser, target_short_code))
         self.parent.callback()
 
 # 댓글 추출
