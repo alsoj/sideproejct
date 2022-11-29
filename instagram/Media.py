@@ -13,15 +13,19 @@ class MediaWorker(QThread):
         self.parent = parent
 
     def run(self):
-        for target_short_code in self.parent.target_short_code_list:
-            self.parent.target_list.extend(get_media(self.parent.browser, target_short_code))
-        self.parent.callback()
+        try:
+            for target_short_code in self.parent.target_short_code_list:
+                self.parent.target_list.extend(get_media(self.parent.browser, target_short_code))
+            self.parent.callback()
+        except Exception as e:
+            Common.error(self.parent.log_browser, f"Media Run 실행 중 오류 메시지 : {str(e)}")
 
-# 댓글 추출
+# 좋아요 수, 댓글 수 추출
 def get_media(browser, short_code):
     media_url = f'https://www.instagram.com/p/{short_code}/'
 
     browser.get(media_url)
+    sleep(3)
     res = browser.page_source
     app_id = Common.get_app_id(res)
     media_id = Common.get_media_id(res)
@@ -45,10 +49,11 @@ def get_media(browser, short_code):
     item_list = data['items']
     target_list = []
     for item in item_list:
+        username = item['user']['username']
         taken_at = get_datetime(item['taken_at'])
         code = item['code']
         like_count = item['like_count']
         comment_count = item['comment_count']
-        target_list.append([taken_at, code, like_count, comment_count])
+        target_list.append([username, taken_at, code, like_count, comment_count])
 
     return target_list

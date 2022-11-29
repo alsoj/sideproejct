@@ -3,12 +3,6 @@ from time import sleep
 from PyQt6.QtCore import QThread
 
 import Common
-import json
-
-from selenium.webdriver.common.by import By
-import Config
-import unicodedata
-from openpyxl import load_workbook
 from Common import get_datetime
 import requests
 
@@ -18,14 +12,19 @@ class TimelineWorker(QThread):
         self.parent = parent
 
     def run(self):
-        self.parent.recent_list = get_timeline(self.parent.browser, self.parent.recent_user_id)
-        self.parent.callback()
+        try:
+            for user_id in self.parent.recent_user_id_list:
+                self.parent.recent_list.append(get_timeline(self.parent.browser, user_id))
+            self.parent.callback()
+        except Exception as e:
+            Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")
 
 # 댓글 추출
 def get_timeline(browser, user_id):
     timeline_url = f'https://www.instagram.com/{user_id}'
     api_url = f'https://www.instagram.com/api/v1/feed/user/{user_id}/username/?count=12'
     browser.get(timeline_url)
+    sleep(3)
     res = browser.page_source
     app_id = Common.get_app_id(res)
     csrftoken = browser.get_cookie("csrftoken")['value']
@@ -47,10 +46,12 @@ def get_timeline(browser, user_id):
     item_list = data['items']
     recent_list = []
     for item in item_list:
-        taken_at = get_datetime(item['taken_at'])
-        code = item['code']
-        like_count = item['like_count']
-        comment_count = item['comment_count']
-        recent_list.append([taken_at, code, like_count, comment_count])
+        if len(recent_list) < 12:
+            username = item['user']['username']
+            taken_at = get_datetime(item['taken_at'])
+            code = item['code']
+            like_count = item['like_count']
+            comment_count = item['comment_count']
+            recent_list.append([username, taken_at, code, like_count, comment_count])
 
     return recent_list

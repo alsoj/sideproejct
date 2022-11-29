@@ -5,10 +5,8 @@ import json
 
 from selenium.webdriver.common.by import By
 import Config
-import unicodedata
-from openpyxl import load_workbook
 from Common import get_datetime
-import requests
+import Common
 
 class CommentWorker(QThread):
     def __init__(self, parent):
@@ -16,9 +14,12 @@ class CommentWorker(QThread):
         self.parent = parent
 
     def run(self):
-        for short_code in self.parent.comment_short_code_list:
-            self.parent.comment_list.append(get_comments(self.parent.browser, short_code))
-        self.parent.callback()
+        try:
+            for short_code in self.parent.comment_short_code_list:
+                self.parent.comment_list.append(get_comments(self.parent.browser, short_code))
+            self.parent.callback()
+        except Exception as e:
+            Common.error(self.parent.log_browser, f"Comment Run 실행 중 오류 메시지 : {str(e)}")
 
 # 댓글 추출
 def get_comments(browser, short_code):
@@ -49,14 +50,14 @@ def get_comments(browser, short_code):
                 username = comment['node']['owner']['username']
                 comment_text = comment['node']['text']
                 created_at = get_datetime(comment['node']['created_at'])
-                comment_list.append([rownum, 1, username, comment_text, created_at])
+                comment_list.append([short_code, rownum, 1, username, comment_text, created_at])
                 co_comments = comment['node']['edge_threaded_comments']['edges']
 
                 for co_comment in co_comments:  # 대댓글
                     username = co_comment['node']['owner']['username']
                     comment_text = co_comment['node']['text']
                     created_at = get_datetime(co_comment['node']['created_at'])
-                    comment_list.append([rownum, 2, username, comment_text, created_at])
+                    comment_list.append([short_code, rownum, 2, username, comment_text, created_at])
 
         else:
             has_next_page = False

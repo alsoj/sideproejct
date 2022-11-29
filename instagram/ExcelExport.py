@@ -10,9 +10,9 @@ def create_excel(crawl_type, file_name):
     if crawl_type == 'like':
         title = ['번호', '사용자ID', '사용자명']
     elif crawl_type == 'comment':
-        title = ['번호', '레벨', '사용자ID', '내용', '작성일시']
+        title = ['코드', '번호', '레벨', '사용자ID', '내용', '작성일시']
     elif crawl_type == 'timeline':
-        title = ['게시일시', '코드', '좋아요 수', '댓글 수']
+        title = ['사용자ID', '게시일시', '코드', '좋아요 수', '댓글 수']
     elif crawl_type == 'tag':
         title = ['번호', '사용자ID', '사용자명', '팔로워 수', '팔로잉 수']
     elif crawl_type == 'follower':
