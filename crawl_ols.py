@@ -9,16 +9,16 @@ import crawl_config
 # 전역변수 세팅
 
 # 외부망
-# BASE_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN051M/page.do'
-# DETAIL_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN052M/page.do?bltwtrSeq='
+BASE_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN051M/page.do'
+DETAIL_URL = 'https://ols.sbiz.or.kr/ols/man/SMAN052M/page.do?bltwtrSeq='
 
 # 개발계
 # BASE_URL = 'http://10.217.58.126:18881/ols/man/SMAN051M/page.do'
 # DETAIL_URL = 'http://10.217.58.126:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
 
 # 운영계
-BASE_URL = 'http://211.252.121.132:18881/ols/man/SMAN051M/page.do'
-DETAIL_URL = 'http://211.252.121.132:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
+# BASE_URL = 'http://211.252.121.132:18881/ols/man/SMAN051M/page.do'
+# DETAIL_URL = 'http://211.252.121.132:18881/ols/man/SMAN052M/page.do?bltwtrSeq='
 
 category = {
     '서비스안내': 'service'
@@ -67,8 +67,8 @@ def execute_browser():
   options.add_argument("--single-process")
   options.add_argument("--disable-dev-shm-usage")
   # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-  # browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
-  browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
+  browser = webdriver.Chrome(executable_path='/home/crawler/chromedriver', options=options)
+  # browser = webdriver.Chrome(executable_path='/interface/crawler/chromedriver', options=options)
   return browser
 
 def get_recent_id(browser):

@@ -20,6 +20,7 @@ if 'macOS' in platform.platform():
     BASE_URL = 'https://www.sbiz.or.kr/'  # 로컬
 else:
     BASE_URL = 'http://211.252.121.132:18882/'  # 운영
+    # BASE_URL = 'https://www.sbiz.or.kr/'  # 개발
 SEARCH_URL = BASE_URL + 'sup/search/Search.do'
 
 def get_max_date():
@@ -128,7 +129,7 @@ def search_tab(keyword, tab, start_date):
             if href.startswith('javascript'):
                 url = BASE_URL + href.split('\'')[1]
             else:
-                url = href
+                url = BASE_URL + href.split('sbiz.or.kr/')[-1]
 
             temp_dict = {}
             temp_dict['url'] = url
@@ -165,7 +166,7 @@ def log_error(text):
 if __name__ == "__main__":
     log_debug("crawl_sup.py START")
     max_date = get_max_date()
-    log_debug("get_max_date : " + max_date)
+    log_debug("max_date : " +  max_date)
 
     for task in CRAWL_LIST:
         keyword, tab = task
