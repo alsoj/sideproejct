@@ -46,7 +46,7 @@ class PostWorker(QThread):
     def execute_browser(self):
         self.parent.info("크롬 브라우저가 실행됩니다. 크롤링 전 로그인을 진행하시기 바랍니다.")
         self.browser = webdriver.Chrome(executable_path=Config.CHROME_DIR)
-        # self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        self.browser.set_page_load_timeout(3600)
         self.browser.get(Config.LOGIN_URL)
 
     def crawl_past(self):
@@ -60,7 +60,7 @@ class PostWorker(QThread):
             try:
                 has_next, recent_no = self.go_to_next_post(recent_no)  # 해당 페이지 내에서 끝까지 크롤링을 완료하면 -1을 반환
             except TimeoutException as e:
-                self.parent.browser.refresh()
+                self.browser.refresh()
                 has_next, recent_no = self.go_to_next_post(recent_no)
 
             if has_next is False:

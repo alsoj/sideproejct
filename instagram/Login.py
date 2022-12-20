@@ -27,7 +27,7 @@ class LoginWorker(QThread):
 
         Common.debug(self.parent.log_browser, f'로그인을 진행하고 있습니다. ID : {self.login_id}')
         self.parent.browser.get(Config.LOGIN_URL)
-        sleep(3)
+        sleep(5)
 
         if 'accounts' in self.parent.browser.current_url:
             inputs = self.parent.browser.find_elements(by=By.TAG_NAME, value='input')

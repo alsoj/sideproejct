@@ -14,7 +14,13 @@ class TimelineWorker(QThread):
     def run(self):
         try:
             for user_id in self.parent.recent_user_id_list:
-                self.parent.recent_list.append(get_timeline(self.parent.browser, user_id))
+                try:
+                    self.parent.recent_list.append(get_timeline(self.parent.browser, user_id))
+                except Exception as e:
+                    Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 대상 : {user_id}")
+                    Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")
+                    continue
+
             self.parent.callback()
         except Exception as e:
             Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")

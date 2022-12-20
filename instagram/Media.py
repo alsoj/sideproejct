@@ -15,7 +15,13 @@ class MediaWorker(QThread):
     def run(self):
         try:
             for target_short_code in self.parent.target_short_code_list:
-                self.parent.target_list.extend(get_media(self.parent.browser, target_short_code))
+                try:
+                    self.parent.target_list.extend(get_media(self.parent.browser, target_short_code))
+                except Exception as e:
+                    Common.error(self.parent.log_browser, f"Media Run 실행 중 오류 대상 : {target_short_code}")
+                    Common.error(self.parent.log_browser, f"Media Run 실행 중 오류 메시지 : {str(e)}")
+                    continue
+
             self.parent.callback()
         except Exception as e:
             Common.error(self.parent.log_browser, f"Media Run 실행 중 오류 메시지 : {str(e)}")
