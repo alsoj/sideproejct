@@ -18,6 +18,7 @@ category = {
 
 if 'macOS' in platform.platform():
     BASE_URL = 'https://www.sbiz.or.kr/'  # 로컬
+    # BASE_URL = 'http://211.252.121.132:18882/'  # 운영
 else:
     BASE_URL = 'http://211.252.121.132:18882/'  # 운영
     # BASE_URL = 'https://www.sbiz.or.kr/'  # 개발
@@ -163,21 +164,69 @@ def log_error(text):
     print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {text}")
 
 
+def insert_crawl_log(params):
+    """
+    DB 입력
+    :param params: 입력 값 리스트
+    :return:
+    """
+
+    insert_sql = """
+                INSERT INTO tb_crawling_log
+                (id, status, reg_dtm, tab, keyword)
+                VALUES
+                (nextval('seq_crawling_log'), %s, now(), %s, %s)
+                ;
+                """
+    conn = None
+
+    try:
+        conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                                dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                                user=crawl_config.DATABASE_CONFIG['user'],
+                                password=crawl_config.DATABASE_CONFIG['password'],
+                                port=crawl_config.DATABASE_CONFIG['port'])
+        cur = conn.cursor()
+        cur.execute(insert_sql, params)
+        conn.commit()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        log_error("insert_crawl_log() ERROR : " + str(error))
+    finally:
+        if conn is not None:
+            conn.close()
+
 if __name__ == "__main__":
     log_debug("crawl_sup.py START")
     max_date = get_max_date()
     log_debug("max_date : " +  max_date)
 
     for task in CRAWL_LIST:
-        keyword, tab = task
-        log_debug("=================================")
-        log_debug("KEYWORD :" + category[keyword] + " | TAB :" + tab)
+        try:
+            keyword, tab = task
+            log_debug("=================================")
+            log_debug("KEYWORD :" + category[keyword] + " | TAB :" + tab)
 
-        target_list = search_tab(keyword, tab, max_date)
-        for target in target_list:
-            title, content = get_detail_info(target['url'], tab)
+            target_list = search_tab(keyword, tab, max_date)
 
-            params = [title, content, category[keyword], target['source'], target['date'], target['url']]
-            insert_sup(params)
+            if len(target_list) > 0:
+                for target in target_list:
+                    title, content = get_detail_info(target['url'], tab)
+
+                    params = [title, content, category[keyword], target['source'], target['date'], target['url']]
+                    insert_sup(params)
+
+                insert_crawl_log(['S', tab, keyword])  # 크롤링 로그 : 수집 성공
+            else:
+                insert_crawl_log(['N', tab, keyword])  # 크롤링 로그 : 데이터 없음
+
+        except requests.exceptions.RequestException as req_err:
+            log_error("requests.exceptions.RequestException ERROR ")
+            log_error(str(req_err))
+            insert_crawl_log(['F', task[1], task[0]])  # 크롤링 로그 : 커넥션 오류
+        except Exception as e:
+            log_error("crawl_sup.py ERROR")
+            log_error(str(e))
+            insert_crawl_log(['C', task[1], task[0]])  # 크롤링 로그 : 자체 오류
 
     log_debug("crawl_sup.py FINISH")
