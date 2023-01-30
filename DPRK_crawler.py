@@ -110,11 +110,13 @@ class NewsWorker(QThread):
 
             self.connect_url(login_url)
             login(self.parent.browser)
+            self.parent.debug("로그인에 성공했습니다.")
 
             self.connect_url(search_call_url)
             article_list = get_article_list(self.parent.browser)
-
+            article_cnt = len(article_list)
             rownum = 0
+            self.parent.info(f"크롤링 대상 기사 개수 : {article_cnt}")
             for article in article_list:
                 detail_url = article.get_attribute('href')
                 self.parent.browser.switch_to.new_window('tab')
@@ -126,7 +128,7 @@ class NewsWorker(QThread):
                 close_new_tabs(self.parent.browser)
                 rownum += 1
                 if rownum % 10 == 0:
-                    self.parent.debug(f"기사 크롤링 진행 중 : {rownum}개 완료")
+                    self.parent.debug(f"기사 크롤링 진행 중 [{rownum} / {article_cnt}개 완료]")
 
             self.parent.info("조선언론정보기지 크롤링 END")
         except Exception as e:
