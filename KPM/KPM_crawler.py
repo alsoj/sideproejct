@@ -23,8 +23,8 @@ import unicodedata
 import re
 
 # 전역변수 - 파일 관련
-FILE_PATH = './output/'
-FILE_PREFIX = 'DPRK_'
+FILE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/output/'
+FILE_PREFIX = 'KPM_'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
 
@@ -32,8 +32,14 @@ FILE_NAME = ''
 SLEEP_TIME = 60
 RETRY_CNT = 10
 
-form_class = uic.loadUiType("DPRK_crawler.ui")[0]
-class DPRKCrawler(QMainWindow, form_class):
+# ID/PW 세팅
+f = open(os.path.dirname(os.path.realpath(__file__)) + "/account.txt", 'r')
+lines = f.readlines()
+ID, PW = lines[0].strip(), lines[1].strip()
+f.close()
+
+form_class = uic.loadUiType(os.path.dirname(os.path.realpath(__file__)) + "/KPM_crawler.ui")[0]
+class KPMCrawler(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -106,7 +112,19 @@ class NewsWorker(QThread):
             # 메인 로직 시작
             ###################################
             login_url = 'http://www.dprkmedia.com//gate/gatemain'
-            search_call_url = f'http://www.dprkmedia.com/search?ddlWhere=news&txtKeyword[]=&searchRange=title_nayong&dateRange[]={start_ymd}&dateRange[]={end_ymd}&nTitle[]=민주조선'
+
+            target_news = ""
+            if self.parent.check_RD.isChecked():
+                target_news += "&nTitle[]=로동신문"
+            if self.parent.check_MH.isChecked():
+                target_news += "&nTitle[]=문학신문"
+            if self.parent.check_MJ.isChecked():
+                target_news += "&nTitle[]=민주조선"
+            if self.parent.check_PT.isChecked():
+                target_news += "&nTitle[]=Pyongyang Times"
+            if self.parent.check_RD.isChecked():
+                target_news += "&nTitle[]=조선신보 평양지국"
+            search_call_url = f'http://www.dprkmedia.com/search?ddlWhere=news&txtKeyword[]=&searchRange=title_nayong&dateRange[]={start_ymd}&dateRange[]={end_ymd}{target_news}'
 
             self.connect_url(login_url)
             login(self.parent.browser)
@@ -182,9 +200,9 @@ def login(browser):
     button_login = browser.find_element(by=By.ID, value='Login1_btn_login')
 
     input_id.clear()
-    input_id.send_keys("tongkimp")
+    input_id.send_keys(ID)
     input_pw.clear()
-    input_pw.send_keys("kpsite99")
+    input_pw.send_keys(PW)
     button_login.click()
 
 # 기사 리스트 조회
@@ -214,7 +232,7 @@ def find_element(browser, target):
         elif target == 'subtitle':
             return '\n' + browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[4]/td/b').text.strip()
         elif target == 'content':
-            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip()
+            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip().replace("\n"," ")
         elif target == 'author':
             return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[10]/td').text.strip()
         elif target == 'date':
@@ -237,6 +255,6 @@ def get_detail_info(browser):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    news_crawler = DPRKCrawler()
+    news_crawler = KPMCrawler()
     news_crawler.show()
     app.exec()
