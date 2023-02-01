@@ -33,7 +33,7 @@ SLEEP_TIME = 60
 RETRY_CNT = 10
 
 # ID/PW 세팅
-f = open(os.path.dirname(os.path.realpath(__file__)) + "/account.txt", 'r')
+f = open(os.path.dirname(os.path.realpath(__file__)) + "/KPM_account.txt", 'r')
 lines = f.readlines()
 ID, PW = lines[0].strip(), lines[1].strip()
 f.close()
