@@ -23,7 +23,7 @@ import unicodedata
 import re
 
 # 전역변수 - 파일 관련
-FILE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/output/'
+FILE_PATH = './output/'
 FILE_PREFIX = 'KPM_'
 FILE_SUFFIX = '.xlsx'
 FILE_NAME = ''
@@ -33,12 +33,12 @@ SLEEP_TIME = 60
 RETRY_CNT = 10
 
 # ID/PW 세팅
-f = open(os.path.dirname(os.path.realpath(__file__)) + "/KPM_account.txt", 'r')
+f = open("KPM_account.txt", 'r')
 lines = f.readlines()
 ID, PW = lines[0].strip(), lines[1].strip()
 f.close()
 
-form_class = uic.loadUiType(os.path.dirname(os.path.realpath(__file__)) + "/KPM_crawler.ui")[0]
+form_class = uic.loadUiType("KPM_crawler.ui")[0]
 class KPMCrawler(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
@@ -122,7 +122,7 @@ class NewsWorker(QThread):
                 target_news += "&nTitle[]=민주조선"
             if self.parent.check_PT.isChecked():
                 target_news += "&nTitle[]=Pyongyang Times"
-            if self.parent.check_RD.isChecked():
+            if self.parent.check_JS.isChecked():
                 target_news += "&nTitle[]=조선신보 평양지국"
             search_call_url = f'http://www.dprkmedia.com/search?ddlWhere=news&txtKeyword[]=&searchRange=title_nayong&dateRange[]={start_ymd}&dateRange[]={end_ymd}{target_news}'
 
@@ -232,7 +232,7 @@ def find_element(browser, target):
         elif target == 'subtitle':
             return '\n' + browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[4]/td/b').text.strip()
         elif target == 'content':
-            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip().replace("\n"," ")
+            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip().replace("\n", "").replace(".", ".\n")
         elif target == 'author':
             return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[10]/td').text.strip()
         elif target == 'date':
@@ -244,12 +244,19 @@ def find_element(browser, target):
 
 def get_detail_info(browser):
     media_name = find_element(browser, 'media_name')
+    media_name = unicodedata.normalize('NFKC', media_name)
     section = find_element(browser, 'section')
+    section = unicodedata.normalize('NFKC', section)
     title = find_element(browser, 'title')
+    title = unicodedata.normalize('NFKC', title)
     subtitle = find_element(browser, 'subtitle')
+    subtitle = unicodedata.normalize('NFKC', subtitle)
     content = find_element(browser, 'content')
+    content = unicodedata.normalize('NFKC', content)
     author = find_element(browser, 'author')
+    author = unicodedata.normalize('NFKC', author)
     date = find_element(browser, 'date')
+    date = unicodedata.normalize('NFKC', date)
     return [media_name, section, title + subtitle, content, author, date]
 
 
