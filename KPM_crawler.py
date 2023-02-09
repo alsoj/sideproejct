@@ -232,7 +232,7 @@ def find_element(browser, target):
         elif target == 'subtitle':
             return '\n' + browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[4]/td/b').text.strip()
         elif target == 'content':
-            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip().replace("\n", "").replace(".", ".\n")
+            return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[6]/td').text.strip().replace("\n\n", "\n")
         elif target == 'author':
             return browser.find_element(by=By.XPATH, value='/html/body/form/table/tbody/tr[2]/td[3]/table[2]/tbody/tr[10]/td').text.strip()
         elif target == 'date':
@@ -247,17 +247,19 @@ def get_detail_info(browser):
     media_name = unicodedata.normalize('NFKC', media_name)
     section = find_element(browser, 'section')
     section = unicodedata.normalize('NFKC', section)
-    title = find_element(browser, 'title')
-    title = unicodedata.normalize('NFKC', title)
+    main_title = find_element(browser, 'title')
+    main_title = unicodedata.normalize('NFKC', main_title)
     subtitle = find_element(browser, 'subtitle')
     subtitle = unicodedata.normalize('NFKC', subtitle)
+    title = main_title + subtitle
+    title = title.strip()
     content = find_element(browser, 'content')
     content = unicodedata.normalize('NFKC', content)
     author = find_element(browser, 'author')
     author = unicodedata.normalize('NFKC', author)
     date = find_element(browser, 'date')
     date = unicodedata.normalize('NFKC', date)
-    return [media_name, section, title + subtitle, content, author, date]
+    return [media_name, section, title, content, author, date]
 
 
 if __name__ == "__main__":
