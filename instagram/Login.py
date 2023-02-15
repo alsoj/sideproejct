@@ -30,7 +30,7 @@ class LoginWorker(QThread):
         sleep(5)
 
         if 'accounts' in self.parent.browser.current_url:
-            inputs = self.parent.browser.find_elements(by=By.TAG_NAME, value='input')
+            inputs = self.get_login_input(self, 5)
             inputs[0].clear()
             inputs[1].clear()
             inputs[0].send_keys(self.login_id)
@@ -58,3 +58,15 @@ class LoginWorker(QThread):
 
     def set_login_pw(self, login_pw):
         self.login_pw = login_pw
+
+    def get_login_input(self, retries):
+        inputs = None
+        while retries > 0:
+            try:
+                inputs = self.parent.browser.find_elements(by=By.TAG_NAME, value='input')
+                if len(inputs) > 0:
+                    retries = 0
+            except Exception as e:
+                retries -= 1
+                sleep(2)
+        return inputs

@@ -65,7 +65,7 @@ class INSTA_Window(QMainWindow, form_class):
             return False
 
         self.browser.get(Config.LOGIN_URL)
-        sleep(2)
+        sleep(5)
 
         if 'accounts' in self.browser.current_url:
             inputs = self.browser.find_elements(by=By.TAG_NAME, value='input')
