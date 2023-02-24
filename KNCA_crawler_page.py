@@ -1,7 +1,7 @@
+
 import sys
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
-from PyQt6.QtCore import QDate
 
 # 어플리케이션 패키지
 from selenium import webdriver
@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 from openpyxl import Workbook, load_workbook
-from datetime import datetime, timedelta, date
+import datetime
 from time import sleep
 
 # 전역변수 - 파일 관련
@@ -35,16 +35,13 @@ ROWNUM = 0
 START_DATE = ''
 END_DATE = ''
 
-form_class = uic.loadUiType("KNCA_crawler.ui")[0]
+form_class = uic.loadUiType("KNCA_crawler_page.ui")[0]
 
 class KNCA_Window(QMainWindow, form_class):
   def __init__(self):
     super().__init__()
     self.setupUi(self)
     self.btn_start.clicked.connect(self.btn_start_clicked)
-
-    self.input_start_ymd.setDate(QDate(datetime.now() - timedelta(days=7)))
-    self.input_end_ymd.setDate(QDate(datetime.now()))
 
   def btn_start_clicked(self):
     global BACKGROUND_YN
@@ -56,19 +53,19 @@ class KNCA_Window(QMainWindow, form_class):
     self.log_text_browser.append("#############################################")
     QApplication.processEvents()
 
-    # start_page = self.spin_start_page.value()
-    # end_page = self.spin_end_page.value()
+    start_page = self.spin_start_page.value()
+    end_page = self.spin_end_page.value()
 
-    start_ymd = self.input_start_ymd.date().toPyDate()
-    end_ymd = self.input_end_ymd.date().toPyDate()
-    str_start_ymd = start_ymd.strftime("%Y%m%d")
-    str_end_ymd = end_ymd.strftime("%Y%m%d")
-    self.log_text_browser.append("시작 페이지 :" + str(str_start_ymd) + " / 종료 페이지 :" + str(str_end_ymd))
+    # start_ymd = self.input_start_ymd.date().toPyDate()
+    # end_ymd = self.input_end_ymd.date().toPyDate()
+    # str_start_ymd = start_ymd.strftime("%Y%m%d")
+    # str_end_ymd = end_ymd.strftime("%Y%m%d")
+    self.log_text_browser.append("시작 페이지 :" + str(start_page) + " / 종료 페이지 :" + str(end_page))
     QApplication.processEvents()
 
-    if check_input_valid(start_ymd, end_ymd):
+    if check_input_valid(start_page, end_page):
       global FILE_NAME
-      FILE_NAME = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + FILE_PREFIX + str(str_start_ymd) + '_' + str(str_end_ymd) + FILE_SUFFIX
+      FILE_NAME = datetime.datetime.now().strftime("%Y%m%d%H%M%S") + "_" + FILE_PREFIX + str(start_page) + '_' + str(end_page) + FILE_SUFFIX
       self.log_text_browser.append("생성 파일명 : " + FILE_NAME)
       QApplication.processEvents()
 
@@ -97,14 +94,14 @@ class KNCA_Window(QMainWindow, form_class):
         connect(browser, HOME_URL)
         connect(browser, RECENT_URL)
 
-        # for i in range(start_page, end_page+1):
-        #   go_to_page(browser, i)
-        #   crawl_list_page(self, browser)
+        for i in range(start_page, end_page+1):
+          go_to_page(browser, i)
+          crawl_list_page(self, browser)
 
-        isGo = True
-        while isGo:
-          isGo = crawl_list_page(self, browser, start_ymd, end_ymd)
-          go_next_page(browser)
+        # isGo = True
+        # while isGo:
+        #   isGo = crawl_list_page(self, browser, start_ymd, end_ymd)
+        #   go_next_page(browser)
 
       except Exception as e:
         self.log_text_browser.append(" ")
@@ -125,8 +122,8 @@ class KNCA_Window(QMainWindow, form_class):
     else :
       self.log_text_browser.append("오류 발생 : 종료일자는 시작일자보다 크거나 같아야 합니다.")
 
-def check_input_valid(start_ymd, end_ymd):
-  if end_ymd < start_ymd:
+def check_input_valid(start_page, end_page):
+  if end_page < start_page:
     return False
   else:
     return True
@@ -149,7 +146,7 @@ def write_excel(append_row):
   wb.save(FILE_PATH + FILE_NAME)
 
 
-def crawl_list_page(self, browser, start_ymd, end_ymd):
+def crawl_list_page(self, browser):
   cur_url = browser.current_url
   retries = RETRY_CNT
   while (retries > 0):
@@ -167,53 +164,39 @@ def crawl_list_page(self, browser, start_ymd, end_ymd):
   article_link = browser.find_element(by=By.CLASS_NAME, value='article-link')
   li_tags = article_link.find_elements(by=By.TAG_NAME, value='li')
   for li_tag in li_tags:
-    isTarget, isGo, targetUrl, pub_date = check_target(li_tag, start_ymd, end_ymd)
-    if isTarget:
-      browser.switch_to.new_window('tab')
-      connect(browser, targetUrl)
-      title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
-      global ROWNUM
-      ROWNUM += 1
+    targetUrl = li_tag.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
+    publish_date = li_tag.find_element(by=By.CLASS_NAME, value='publish-time')
 
-      self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
-      QApplication.processEvents()
+    date = publish_date.text.replace("[", "").replace("]", "").replace("주체", "").split(".")
+    year = int(trans_year(date[0]))
+    month = int(date[1])
+    day = int(date[2])
 
-      write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
-      browser.close()
-      browser.switch_to.window(browser.window_handles[0])
+    pub_date = datetime.date(year, month, day)
 
-  return isGo
+    browser.switch_to.new_window('tab')
+    connect(browser, targetUrl)
+    title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
+    global ROWNUM
+    ROWNUM += 1
 
-    # targetUrl = li_tag.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
-    # publish_date = li_tag.find_element(by=By.CLASS_NAME, value='publish-time')
-    # date = publish_date.text.replace("[", "").replace("]", "").replace("주체", "").split(".")
-    # year = int(trans_year(date[0]))
-    # month = int(date[1])
-    # day = int(date[2])
-    #
-    # pub_date = datetime.date(year, month, day)
-    #
-    # browser.switch_to.new_window('tab')
-    # connect(browser, targetUrl)
-    # title, pre_content1, pre_content2, pre_content3, content = get_detail_info(browser)
-    # global ROWNUM
-    # ROWNUM += 1
-    #
-    # self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
-    # QApplication.processEvents()
-    #
-    # write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
-    # browser.close()
-    # browser.switch_to.window(browser.window_handles[0])
+    self.log_text_browser.append(str(ROWNUM) + "번 기사 크롤링 진행 중")
+    QApplication.processEvents()
+
+    write_excel([ROWNUM, pub_date, title, pre_content1, pre_content2, pre_content3, content])
+    browser.close()
+    browser.switch_to.window(browser.window_handles[0])
 
 def check_target(li_tag, start_date, end_date):
   detail_url = li_tag.find_element(by=By.TAG_NAME, value='a').get_attribute('href')
   publish_date = li_tag.find_element(by=By.CLASS_NAME, value='publish-time')
-  yyyy_mm_dd = publish_date.text.replace("[", "").replace("]", "").replace("주체", "").split(".")
-  year = int(trans_year(yyyy_mm_dd[0]))
-  month = int(yyyy_mm_dd[1])
-  day = int(yyyy_mm_dd[2])
-  pub_date = date(year, month, day)
+
+  date = publish_date.text.replace("[", "").replace("]", "").replace("주체", "").split(".")
+  year = int(trans_year(date[0]))
+  month = int(date[1])
+  day = int(date[2])
+
+  pub_date = datetime.date(year, month, day)
   if start_date <= pub_date <= end_date:
     isTarget = True
     isGo = True
