@@ -17,7 +17,7 @@
    <bool>false</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>11</x>
@@ -100,7 +100,7 @@
        <item>
         <widget class="QLabel" name="label_recent_title">
          <property name="text">
-          <string>최근 게시물(6개)</string>
+          <string>최근 게시물(3개)</string>
          </property>
         </widget>
        </item>

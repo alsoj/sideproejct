@@ -74,7 +74,7 @@ class INSTA_Window(QMainWindow, form_class):
             inputs[0].send_keys(self.login_id)
             inputs[1].send_keys(self.login_pw)
             inputs[1].submit()
-            sleep(2)
+            sleep(5)
 
             if '잘못된 비밀번호' in self.browser.page_source:
                 self.error('잘못된 비밀번호입니다.')
@@ -142,17 +142,17 @@ def create_excel(file_name):
     wb.create_sheet('게시글1', 0)
     wb.create_sheet('게시글2', 1)
     wb.create_sheet('게시글3', 2)
-    wb.create_sheet('게시글4', 3)
-    wb.create_sheet('게시글5', 4)
-    wb.create_sheet('게시글6', 5)
-    wb.create_sheet('공통 사용자', 6)
+    # wb.create_sheet('게시글4', 3)
+    # wb.create_sheet('게시글5', 4)
+    # wb.create_sheet('게시글6', 5)
+    wb.create_sheet('공통 사용자', 3)
 
     ws1 = wb['게시글1']
     ws2 = wb['게시글2']
     ws3 = wb['게시글3']
-    ws4 = wb['게시글4']
-    ws5 = wb['게시글5']
-    ws6 = wb['게시글6']
+    # ws4 = wb['게시글4']
+    # ws5 = wb['게시글5']
+    # ws6 = wb['게시글6']
     ws7 = wb['공통 사용자']
 
     sub_liker = ['구분', '번호', '사용자ID', '사용자명']
@@ -160,9 +160,9 @@ def create_excel(file_name):
         ws1.cell(row=1, column=j).value = kwd
         ws2.cell(row=1, column=j).value = kwd
         ws3.cell(row=1, column=j).value = kwd
-        ws4.cell(row=1, column=j).value = kwd
-        ws5.cell(row=1, column=j).value = kwd
-        ws6.cell(row=1, column=j).value = kwd
+        # ws4.cell(row=1, column=j).value = kwd
+        # ws5.cell(row=1, column=j).value = kwd
+        # ws6.cell(row=1, column=j).value = kwd
 
     sub_total = ['번호', '사용자ID']
     for kwd, j in zip(sub_total, list(range(1, len(sub_total) + 1))):
