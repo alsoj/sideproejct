@@ -1,47 +1,31 @@
-import requests
 import datetime
+import requests
 from itertools import product
-import platform
 import psycopg2
 import crawl_config
-
 from bs4 import BeautifulSoup
 
-KEYWORD_LIST = ['정책','창업','대출']
-TAB_LIST = ['supportmeasures','businessinfo','notice']  #지원시책, 사업정보, 알림정보
-CRAWL_LIST = list(product(KEYWORD_LIST, TAB_LIST))
-category = {
-    '정책': 'policy',
-    '창업': 'startup',
-    '대출': 'loans'
-}
+# DB Connection
+def get_db_conn():
+    conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
+                            dbname=crawl_config.DATABASE_CONFIG['dbname'],
+                            user=crawl_config.DATABASE_CONFIG['user'],
+                            password=crawl_config.DATABASE_CONFIG['password'],
+                            port=crawl_config.DATABASE_CONFIG['port'])
+    return conn
 
-if 'macOS' in platform.platform():
-    BASE_URL = 'https://www.sbiz.or.kr/'  # 로컬
-    # BASE_URL = 'http://211.252.121.132:18882/'  # 운영
-else:
-    BASE_URL = 'http://211.252.121.132:18882/'  # 운영
-    # BASE_URL = 'https://www.sbiz.or.kr/'  # 개발
-SEARCH_URL = BASE_URL + 'sup/search/Search.do'
-
+# 최신일자 조회
 def get_max_date():
-    """
-    기존 크롤링 데이터 중 max date 추출
-    :return:
-    """
     sql = """
-            select MAX(reg_dt) 
-            from tb_crawling_sup_intrf;
-            """
+                select MAX(reg_dt) 
+                from tb_crawling_sup_intrf
+                ;
+                """
     conn = None
     max_date = 0
 
     try:
-        conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
-                                dbname=crawl_config.DATABASE_CONFIG['dbname'],
-                                user=crawl_config.DATABASE_CONFIG['user'],
-                                password=crawl_config.DATABASE_CONFIG['password'],
-                                port=crawl_config.DATABASE_CONFIG['port'])
+        conn = get_db_conn()
         cur = conn.cursor()
         cur.execute(sql)
         max_date = cur.fetchone()[0]
@@ -53,13 +37,8 @@ def get_max_date():
             conn.close()
     return max_date
 
-
+# 크롤링 데이터 입력
 def insert_sup(params):
-    """
-    DB 입력
-    :param params: 입력 값 리스트
-    :return:
-    """
 
     select_sql = """
                 SELECT COUNT(*)
@@ -73,11 +52,7 @@ def insert_sup(params):
     conn = None
 
     try:
-        conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
-                                dbname=crawl_config.DATABASE_CONFIG['dbname'],
-                                user=crawl_config.DATABASE_CONFIG['user'],
-                                password=crawl_config.DATABASE_CONFIG['password'],
-                                port=crawl_config.DATABASE_CONFIG['port'])
+        conn = get_db_conn()
         cur = conn.cursor()
         cur.execute(select_sql, [params[-1]])
         count = cur.fetchone()[0]
@@ -96,80 +71,8 @@ def insert_sup(params):
         if conn is not None:
             conn.close()
 
-
-def search_tab(keyword, tab, start_date):
-    temp_row = []
-    today = datetime.datetime.now().strftime("%Y.%m.%d")
-    data = {
-        'startCount': 0,
-        'sort': 'DATE/DESC',
-        'collection': tab,
-        'range': 'A',
-        'startDate': start_date,
-        'endDate': today,
-        'searchField': 'ALL',
-        'reQuery': 2,
-        'realQuery': keyword,
-        'alignment': 'DATE/DESC',
-        'area': 'ALL',
-        'period': 'A'
-        }
-    res = requests.post(SEARCH_URL, data=data)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    business_list = soup.find('div', attrs={"class": "business_list"})
-
-    if business_list is not None:
-        page_list = business_list.find_all('div', attrs={"class": "bl_r"})
-
-        for page in page_list:
-            a = page.find('a', attrs={"class": "bl_link"})
-            source = page.find('span', attrs={"class": "bl_source"}).text.split(':')[1].strip()
-            date = page.find('span', attrs={"class": "bl_date"}).text.split(':')[1].strip()
-            href = a['href']
-
-            if href.startswith('javascript'):
-                url = BASE_URL + href.split('\'')[1]
-            else:
-                url = BASE_URL + href.split('sbiz.or.kr/')[-1]
-
-            temp_dict = {}
-            temp_dict['url'] = url
-            temp_dict['source'] = source
-            temp_dict['date'] = date
-            temp_row.append(temp_dict)
-    else:
-        log_info(f"no target data. ({category[keyword]}, {tab})")
-
-    return temp_row
-
-def get_detail_info(detail_url, tab):
-    title, content = '', ''
-    res = requests.get(detail_url)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    title = soup.find('div', attrs={"class": "fl_l"}).find('p').text
-    if tab == 'supportmeasures':
-        content = soup.find('div', attrs={"class": "bv_cp"}).text.strip()
-    else:
-        content = soup.find('div', attrs={"class": "bv_c"}).text.strip()
-
-    return title, content
-
-def log_debug(text):
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [DEBUG] {text}")
-
-def log_info(text):
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO ] {text}")
-
-def log_error(text):
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {text}")
-
-
+# 크롤링 로그 입력
 def insert_crawl_log(params):
-    """
-    DB 입력
-    :param params: 입력 값 리스트
-    :return:
-    """
 
     insert_sql = """
                 INSERT INTO tb_crawling_log
@@ -181,11 +84,7 @@ def insert_crawl_log(params):
     conn = None
 
     try:
-        conn = psycopg2.connect(host=crawl_config.DATABASE_CONFIG['host'],
-                                dbname=crawl_config.DATABASE_CONFIG['dbname'],
-                                user=crawl_config.DATABASE_CONFIG['user'],
-                                password=crawl_config.DATABASE_CONFIG['password'],
-                                port=crawl_config.DATABASE_CONFIG['port'])
+        conn = get_db_conn()
         cur = conn.cursor()
         cur.execute(insert_sql, params)
         conn.commit()
@@ -196,37 +95,158 @@ def insert_crawl_log(params):
         if conn is not None:
             conn.close()
 
+def select_insert():
+
+    insert_sql = """
+                    INSERT INTO tb_crawling_data (id, title, contents, reg_dt, category, url, crawling_gb, crawling_dt)
+                    SELECT 
+                        NEXTVAL('crawling_seq'), 
+                        title, 
+                        contents, 
+                        replace(reg_dt, '.','-'), 
+                        gb, 
+                        replace(url, 'http://211.252.121.132:18882/', 'https://www.sbiz.or.kr/'),
+                        '01', 
+                        interface_dt 
+                    FROM tb_crawling_sup_intrf 
+                    WHERE to_char(interface_dt, 'yyyymmdd') = to_char(NOW(), 'yyyymmdd');
+                """
+
+    conn = None
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute(insert_sql)
+
+        conn.commit()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        log_error("select_insert() ERROR : " + str(error))
+    finally:
+        if conn is not None:
+            conn.close()
+
+# debug 로그
+def log_debug(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [DEBUG] {text}")
+
+# info 로그
+def log_info(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO ] {text}")
+
+# error 로그
+def log_error(text):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {text}")
+
+# 날짜 파라미터 변환
+def trans_date(max_date):
+    return max_date[0:4] + "." + max_date[4:6] + "." + max_date[6:8]
+
+# HTML 태그 제거
+def get_text_from_tag(contents):
+    return BeautifulSoup(contents, 'html.parser').text.strip().replace(u'\xa0', u'')
+
+# 리스트 조회
+def get_list(keyword, section, max_date):
+    # search_url = 'https://www.sbiz.or.kr/sup/search/search.do'  # 개발
+    search_url = 'http://211.252.121.132:18882/sup/search/search.do'  # 운영
+
+    data = {
+        'query': keyword,
+        'reQuery': '0',
+        'realQuery': '',
+        'startCount': '0',
+        'collection': section,
+        'sort': 'DATE/ASC',
+        'startDate': max_date,
+        'endDate': '',
+        'listCount': '100',
+        'searchField': ''
+    }
+    res = requests.post(search_url, json=data)
+
+    res_json = res.json()
+    docs = res_json['collections'][section + '_list']['document']
+    return docs
+
+def get_detail(doc_id, section_sn):
+    # detail_url = 'https://www.sbiz.or.kr/sup/bbs/getObj.do'  # 개발
+    detail_url = 'http://211.252.121.132:18882/sup/bbs/getObj.do'  # 운영
+
+    data = {
+        'bbsSn': doc_id,
+        'bbsMngSn': section_sn,
+        'inqYn': 'N'
+    }
+
+    res = requests.post(detail_url, data=data)
+    res_json = res.json()
+
+    title = res_json['data']['bbs']['bbsTtl']
+    contents = get_text_from_tag(res_json['data']['bbs']['bbsCn'])
+
+    return title, contents
+
+
 if __name__ == "__main__":
     log_debug("crawl_sup.py START")
+
+    keyword_list = ['정책', '창업', '대출']
+    section_list = ['사업정보', '오늘의뉴스', '공지사항']
+    query_list = list(product(keyword_list, section_list))
+    keyword_category = {
+        '정책': 'policy',
+        '창업': 'startup',
+        '대출': 'loans'
+    }
+
+    section_category = {
+        '사업정보': 'supportmeasures',
+        '오늘의뉴스': 'businessinfo',
+        '공지사항': 'notice'
+    }
+
+    section_sn = {
+        '사업정보': '10',
+        '오늘의뉴스': '2',
+        '공지사항': '1'
+    }
+
     max_date = get_max_date()
-    log_debug("max_date : " +  max_date)
+    # max_date = '2023.03.21'
+    log_debug(f'max_date : {max_date}')
 
-    for task in CRAWL_LIST:
+    for query in query_list:
         try:
-            keyword, tab = task
-            log_debug("=================================")
-            log_debug("KEYWORD :" + category[keyword] + " | TAB :" + tab)
+            keyword, section = query
+            log_debug(keyword + ' / ' + section + ' START')
 
-            target_list = search_tab(keyword, tab, max_date)
+            # 리스트 조회
+            docs_list = get_list(keyword, section_category[section], max_date)
 
-            if len(target_list) > 0:
-                for target in target_list:
-                    title, content = get_detail_info(target['url'], tab)
+            if len(docs_list) > 0:
+                for doc in docs_list:
 
-                    params = [title, content, category[keyword], target['source'], target['date'], target['url']]
+                    # 상세 조회
+                    title, contents = get_detail(doc['DOCID'], section_sn[section])
+                    params = [title, contents, keyword_category[keyword], doc['SOURCE_STR'], doc['Date'], doc['URL']]
+
                     insert_sup(params)
+                    log_info('Insert Data : ' + title)
 
-                insert_crawl_log(['S', tab, keyword])  # 크롤링 로그 : 수집 성공
+                insert_crawl_log(['S', section_category[section], keyword])  # 크롤링 로그 : 수집 성공
+                select_insert()
             else:
-                insert_crawl_log(['N', tab, keyword])  # 크롤링 로그 : 데이터 없음
+                log_info('No Data : ' + keyword + ' / ' + section)
+                insert_crawl_log(['N', section_category[section], keyword])  # 크롤링 로그 : 데이터 없음
 
         except requests.exceptions.RequestException as req_err:
             log_error("requests.exceptions.RequestException ERROR ")
             log_error(str(req_err))
-            insert_crawl_log(['F', task[1], task[0]])  # 크롤링 로그 : 커넥션 오류
+            insert_crawl_log(['F', query[1], query[0]])  # 크롤링 로그 : 커넥션 오류
         except Exception as e:
             log_error("crawl_sup.py ERROR")
             log_error(str(e))
-            insert_crawl_log(['C', task[1], task[0]])  # 크롤링 로그 : 자체 오류
+            insert_crawl_log(['C', query[1], query[0]])  # 크롤링 로그 : 자체 오류
 
     log_debug("crawl_sup.py FINISH")
