@@ -230,12 +230,13 @@ if __name__ == "__main__":
                     # 상세 조회
                     title, contents = get_detail(doc['DOCID'], section_sn[section])
                     params = [title, contents, keyword_category[keyword], doc['SOURCE_STR'], doc['Date'], doc['URL']]
-
-                    insert_sup(params)
-                    log_info('Insert Data : ' + title)
+                    if len(contents.strip()) > 0:
+                        insert_sup(params)
+                        log_info('Insert Data : ' + title)
+                    else:
+                        log_info('No Contents : ' + title)
 
                 insert_crawl_log(['S', section_category[section], keyword])  # 크롤링 로그 : 수집 성공
-                select_insert()
             else:
                 log_info('No Data : ' + keyword + ' / ' + section)
                 insert_crawl_log(['N', section_category[section], keyword])  # 크롤링 로그 : 데이터 없음
@@ -249,4 +250,5 @@ if __name__ == "__main__":
             log_error(str(e))
             insert_crawl_log(['C', query[1], query[0]])  # 크롤링 로그 : 자체 오류
 
+    select_insert()
     log_debug("crawl_sup.py FINISH")
