@@ -1,6 +1,21 @@
 from openpyxl import Workbook, load_workbook
 import Config
 import os
+import datetime
+
+FILE_NAME = ''
+FILE_SUFFIX = '.xlsx'
+
+def get_new_filename(crawl_type, add_param=None):
+    filename = ''
+    NOW = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+    if crawl_type == 'follower':
+        filename = f'{NOW}_팔로워 추출({add_param}).xlsx'
+    elif crawl_type == 'following':
+        filename = f'{NOW}_팔로잉 추출({add_param}).xlsx'
+
+    return filename
 
 def create_excel(crawl_type, file_name):
     wb = Workbook()
@@ -15,8 +30,8 @@ def create_excel(crawl_type, file_name):
         title = ['사용자ID', '게시일시', '코드', '좋아요 수', '댓글 수']
     elif crawl_type == 'tag':
         title = ['번호', '사용자ID', '사용자명', '팔로워 수', '팔로잉 수']
-    elif crawl_type == 'follower':
-        title = ['번호', '사용자ID', '사용자명']
+    elif crawl_type == 'follow':
+        title = ['추출 ID', '사용자ID', '사용자명']
     elif crawl_type == 'post':
         title = ['사용자ID', '사용자명', '게시일시', '코드', '좋아요 수', '댓글 수', '내용', '장소', '태그유저']
     elif crawl_type == 'user':
@@ -39,4 +54,13 @@ def write_excel(row_list, filename):
 
     for row in row_list:
         ws.append(row)
+    wb.save(file_path_name)
+
+def get_workbook(filename):
+    file_path_name = Config.FILE_PATH + filename
+    wb = load_workbook(file_path_name, data_only=True)
+    return wb
+
+def save_workbook(wb, filename):
+    file_path_name = Config.FILE_PATH + filename
     wb.save(file_path_name)

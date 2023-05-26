@@ -30,13 +30,13 @@ class LoginWorker(QThread):
         sleep(5)
 
         if 'accounts' in self.parent.browser.current_url:
-            inputs = self.get_login_input(self, 5)
+            inputs = self.get_login_input(5)
             inputs[0].clear()
             inputs[1].clear()
             inputs[0].send_keys(self.login_id)
             inputs[1].send_keys(self.login_pw)
             inputs[1].submit()
-            sleep(3)
+            sleep(5)
 
             if '잘못된 비밀번호' in self.parent.browser.page_source:
                 Common.error(self.parent.log_browser, '잘못된 비밀번호입니다.')
@@ -45,10 +45,10 @@ class LoginWorker(QThread):
             elif '문제가 발생' in self.parent.browser.page_source:
                 Common.error(self.parent.log_browser, '일시적인 문제가 발생하였습니다.')
             else:
-                Common.debug(self.parent.log_browser, f'로그인에 성공했습니다. ID : {self.login_id}')
+                Common.info(self.parent.log_browser, f'로그인에 성공했습니다. ID : {self.login_id}')
                 is_login = True
         else:  # 이미 로그인된 상태
-            Common.debug(self.parent.log_browser, f'로그인에 성공했습니다. ID : {self.login_id}')
+            Common.info(self.parent.log_browser, f'로그인에 성공했습니다. ID : {self.login_id}')
             is_login = True
 
         return is_login

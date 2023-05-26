@@ -83,6 +83,7 @@ class LikerWorker(QThread):
             sleep(3)
             content = browser.find_element(by=By.TAG_NAME, value='pre').text
             data = json.loads(content)
+            # print(data)
 
             if 'data' in data:
                 has_next_page = data['data']['shortcode_media']['edge_liked_by']['page_info']['has_next_page']
@@ -127,9 +128,9 @@ def get_recent_post(browser, user_id):
     code_list = [
                 data['items'][0]['code'],
                 data['items'][1]['code'],
-                data['items'][2]['code'],
-                data['items'][3]['code'],
-                data['items'][4]['code'],
-                data['items'][5]['code']
+                data['items'][2]['code']
+                # data['items'][3]['code'],
+                # data['items'][4]['code'],
+                # data['items'][5]['code']
                 ]
     return code_list
