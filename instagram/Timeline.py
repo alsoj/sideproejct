@@ -2,62 +2,61 @@ from time import sleep
 
 from PyQt6.QtCore import QThread
 
-import Common
-from Common import get_datetime
+from Common import get_headers, get_app_id, get_datetime, debug, info, error
+import Config
 import requests
 
 class TimelineWorker(QThread):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+        self.browser = parent.browser
+        self.log_browser = parent.log_browser
+        self.target_id = None
+        self.timeline = None
 
     def run(self):
         try:
-            for user_id in self.parent.recent_user_id_list:
-                try:
-                    self.parent.recent_list.append(get_timeline(self.parent.browser, user_id))
-                except Exception as e:
-                    Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 대상 : {user_id}")
-                    Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")
-                    continue
+            # 헤더 세팅을 위한 초기 조회
+            feed_url = Config.BASE_URL + {self.target_id}
+            self.browser.get(feed_url)
+            sleep(3)
 
-            self.parent.callback()
+            self.timeline = get_timeline(self.browser, self.target_id)
+            self.parent.after_timeline()
+
         except Exception as e:
-            Common.error(self.parent.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")
+            error(self.log_browser, f"Timeline Run 실행 중 오류 메시지 : {str(e)}")
 
-# 댓글 추출
-def get_timeline(browser, user_id):
-    timeline_url = f'https://www.instagram.com/{user_id}'
-    api_url = f'https://www.instagram.com/api/v1/feed/user/{user_id}/username/?count=12'
-    browser.get(timeline_url)
-    sleep(3)
-    res = browser.page_source
-    app_id = Common.get_app_id(res)
-    csrftoken = browser.get_cookie("csrftoken")['value']
+    def set_target_id(self, target_id):
+        self.target_id = target_id
 
-    cookies = browser.get_cookies()
-    header_cookie = ''
-    for cookie in cookies:
-        header_cookie += f"{cookie['name']}={cookie['value']}; "
+# 타임라인 추출
+def get_timeline(browser, user_id, max_id):
 
     # 헤더 세팅
-    headers = {}
-    headers['referer'] = 'https://www.instagram.com/'
-    headers['x-csrftoken'] = csrftoken
-    headers['cookie'] = header_cookie
-    headers['x-ig-app-id'] = app_id
+    headers = get_headers(browser)
+    timeline_url = f'https://www.instagram.com/api/v1/feed/user/{user_id}/username/?count=12'
+    if max_id is not None:
+        timeline_url += f'&max_id={max_id}'
 
-    res = requests.get(api_url, headers=headers)
+    res = requests.get(timeline_url, headers=headers)
     data = res.json()
-    item_list = data['items']
-    recent_list = []
-    for item in item_list:
-        if len(recent_list) < 12:
-            username = item['user']['username']
-            taken_at = get_datetime(item['taken_at'])
-            code = item['code']
-            like_count = item['like_count']
-            comment_count = item['comment_count']
-            recent_list.append([username, taken_at, code, like_count, comment_count])
 
-    return recent_list
+    if data['more_available'] == True:
+        next_max_id = data['next_max_id']
+        user = data['user']['pk']
+    else:
+        next_max_id = None
+
+    item_list = data['items']
+    target_list = []
+    for item in item_list:
+        username = item['user']['username']
+        taken_at = get_datetime(item['taken_at'])
+        code = item['code']
+        like_count = item['like_count']
+        comment_count = item['comment_count']
+        target_list.append([username, taken_at, code, like_count, comment_count])
+
+    return target_list
