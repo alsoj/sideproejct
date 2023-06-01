@@ -1,10 +1,8 @@
 import os
 import sys
-from time import sleep
 
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import QDate, Qt
-
+from PyQt6.QtCore import QDate
 from PyQt6 import uic
 
 from datetime import datetime, date, timedelta
@@ -16,8 +14,6 @@ import Config
 from Login import LoginWorker
 from Profile import ProfileWorker
 from Timeline import TimelineWorker
-
-from selenium.webdriver.common.by import By
 
 form_class = uic.loadUiType("crawl_feed.ui")[0]
 class INSTA_Window(QMainWindow, form_class):
@@ -156,7 +152,7 @@ class INSTA_Window(QMainWindow, form_class):
 
     # 전체 기간 선택
     def check_all_period(self, state):
-        enabled = state == Qt.CheckState.Unchecked.value
+        enabled = state == 0  # 2: 체크, 0:체크해제
         self.edit_date_from.setEnabled(enabled)
         self.edit_date_to.setEnabled(enabled)
         self.all_period = not enabled
