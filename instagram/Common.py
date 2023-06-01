@@ -8,6 +8,8 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import re
 import requests
+from io import BytesIO
+from PIL import Image
 
 # 브라우저 실행
 def execute_browser(type=None):
@@ -23,7 +25,7 @@ def execute_browser(type=None):
         options = webdriver.ChromeOptions()
         options.add_argument("headless")
         if 'macOS' in platform.platform():
-            browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver111', options=options)
+            browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver113', options=options)
             # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         else:
             browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -70,6 +72,15 @@ def get_user_by_user_id(user_id, headers):
             print("getting user failed, due to '{}'".format(e.message))
     return user_info['data']
 
+def download_img(url, file_path_name):
+    try:
+        res = requests.get(url)
+        img = Image.open(BytesIO(res.content))
+        img.save(f'{file_path_name}.jpeg', 'JPEG')
+    except Exception as e:
+        print("image download failed, url : '{}'".format(url))
+        print("image download failed, due to '{}'".format(e.message))
+
 # header 만들기
 def get_headers(browser):
     res = browser.page_source
@@ -115,3 +126,16 @@ def error(log_browser, text):
     log_browser.append(f'<p style="color:red">[{now}] {text}</p>')
     scroll_bar = log_browser.verticalScrollBar()
     scroll_bar.setValue(scroll_bar.maximum())
+
+# 입력 값 체크
+def is_null(target):
+    return target is None or len(target.strip()) == 0
+
+# 해시 태그 추출
+def get_hashtag(text):
+    pattern = '#([0-9a-zA-Z가-힣]*)'
+    hashtag_regex = re.compile(pattern)
+
+    hashtag = hashtag_regex.findall(text)
+    hashtag = ['#' + tag for tag in hashtag]
+    return hashtag
