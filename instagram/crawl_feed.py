@@ -72,6 +72,8 @@ class INSTA_Window(QMainWindow, form_class):
             error(self.log_browser, "종료일자는 시작일자보다 크거나 같아야 합니다.")
             return
 
+        info(self.log_browser, "사용자 피드 추출을 시작합니다.")
+
         # 디렉토리 생성
         now = datetime.now().strftime("%Y%m%d%H%M%S")
         self.directory_name = f'{target_id}_{now}/'
@@ -90,8 +92,6 @@ class INSTA_Window(QMainWindow, form_class):
 
     # 로그인 콜백
     def after_login(self):
-        info(self.log_browser, "사용자 피드 추출을 시작합니다.")
-
         # 사용자 프로필 추출
         self.profile_worker.set_target_id(self.edit_target_id.text())
         self.profile_worker.run()

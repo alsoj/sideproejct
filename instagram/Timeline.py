@@ -85,15 +85,14 @@ def get_timeline(browser, user_id, max_id):
     return data
 
 def get_detail_info(data):
+    next_max_id = None
+    result_list = []
+
     try:
         if data['more_available']:
             next_max_id = data['next_max_id']
-            # user = data['user']['pk']
-        else:
-            next_max_id = None
 
         item_list = data['items']
-        result_list = []
         for item in item_list:
 
             result = {
