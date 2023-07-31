@@ -20,6 +20,16 @@ from time import sleep
 import unicodedata
 import re
 
+# import logging
+# logger = logging.getLogger()  # 로그 생성
+# logger.setLevel(logging.DEBUG)  # 로그의 출력 기준 설정
+# formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')  # log 출력 형식
+#
+# # log를 파일에 출력
+# file_handler = logging.FileHandler('RDNEWS_crawler.log')
+# file_handler.setFormatter(formatter)
+# logger.addHandler(file_handler)
+
 # 전역변수 - 파일 관련
 FILE_PATH = './output/'
 FILE_PREFIX = 'RDNEWS_'
@@ -66,12 +76,12 @@ class RDNEWSCrawler(QMainWindow, form_class):
         else:
             background_yn = "Y" if self.chk_background.isChecked() > 0 else "N"
             options = get_option(background_yn)
-            if 'macOS' in platform.platform():
-                self.browser = webdriver.Chrome(executable_path='/Users/alsoj/Workspace/kmong/ipynb/chromedriver_mac', options=options)
-            else:
-                self.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            self.browser = get_browser(options)
 
-            self.news_worker.start()
+            if self.browser is not None:
+                self.news_worker.start()
+            else:
+                self.error("크롬 브라우저 실행에 실패했습니다.")
 
     def closeEvent(self, QCloseEvent):
         if hasattr(self, 'browser'):
@@ -156,6 +166,15 @@ class NewsWorker(QThread):
                 sleep(SLEEP_TIME)
                 continue
         return connected
+
+def get_browser(options):
+    browser = None
+    try:
+        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    except Exception as e:
+        browser = webdriver.Chrome(executable_path='./chromedriver', options=options)
+    finally:
+        return browser
 
 def get_option(background_yn):
     # 백그라운드 실행 세팅

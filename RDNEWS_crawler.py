@@ -73,10 +73,12 @@ class MyWindow(QMainWindow, form_class):
       options = webdriver.ChromeOptions()
       if BACKGROUND_YN == "Y":
         options.add_argument("headless")
+      try:
+        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+      except Exception as e:
+        browser = webdriver.Chrome(executable_path='./chromedriver', options=options)
 
-      browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-      try :
+      try:
         crawl_ymd = start_ymd
 
         while (crawl_ymd <= end_ymd):
