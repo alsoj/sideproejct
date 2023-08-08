@@ -35,8 +35,8 @@ class LoginWorker(QThread):
             inputs = self.get_login_input(5)
             inputs[0].clear()
             inputs[1].clear()
-            inputs[0].send_keys(self.login_id)
-            inputs[1].send_keys(self.login_pw)
+            inputs[0].send_keys(self.login_id.strip())
+            inputs[1].send_keys(self.login_pw.strip())
             inputs[1].submit()
             sleep(5)
 
@@ -46,6 +46,8 @@ class LoginWorker(QThread):
                 error(self.parent.log_browser, '잘못된 사용자 ID입니다.')
             elif '문제가 발생' in self.parent.browser.page_source:
                 error(self.parent.log_browser, '일시적인 문제가 발생하였습니다.')
+            elif '비정상적인' in self.parent.browser.page_source:
+                error(self.parent.log_browser, '비정상적인 로그인 시도로 감지되었습니다.')
             else:
                 info(self.parent.log_browser, f'로그인에 성공했습니다. ID : {self.login_id}')
                 is_login = True
