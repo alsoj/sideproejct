@@ -1,6 +1,5 @@
 import os
 import sys
-from time import sleep
 
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
@@ -12,9 +11,7 @@ from openpyxl import Workbook
 import Config
 import Common
 from Liker import LikerWorker
-from selenium.webdriver.common.by import By
-
-from instagram.Login import LoginWorker
+from Login import LoginWorker
 
 form_class = uic.loadUiType("Main_Like_Crawler.ui")[0]
 
@@ -25,9 +22,11 @@ class INSTA_Window(QMainWindow, form_class):
         self.btn_start_recent.clicked.connect(self.btn_start_recent_clicked)  # 최근 게시물 크롤링
         self.scroll_bar = self.log_browser.verticalScrollBar()
         self.log_browser.append(" - 추출 결과는 output 폴더 하위에 저장됩니다.")
-        self.log_browser.append(" - 게시글 URL 예시) https://www.instagram.com/p/Cf-vUAcLS8K/")
+        self.log_browser.append(" - 인스타그램 크롤링을 위해서는 로그인이 필수입니다.")
+        self.log_browser.append(" - 로그인 정보는 로그인 시에만 사용되며, 별도 서버에 저장되지 않습니다.")
+        self.log_browser.append(" - 사용자 ID 입력 예시) im_doodlely")
         self.log_browser.append(" - 과도한 크롤링은 인스타그램에서 제한될 수 있습니다.")
-        self.browser = execute_browser(background=False)
+        self.browser = execute_browser(False)
         self.liker_worker = LikerWorker(self)
         self.login_worker = LoginWorker(self)
         self.login_id = None
@@ -36,10 +35,6 @@ class INSTA_Window(QMainWindow, form_class):
         self.target_id = None
         self.target_count = None
         self.crawl_type = 'recent'
-
-        # Test용
-        self.edit_id.setText("lazybrothers@naver.com")
-        self.edit_pw.setText("Lazy2210!")
 
     # 최근 게시물 클릭
     def btn_start_recent_clicked(self):

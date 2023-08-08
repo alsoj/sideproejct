@@ -5,12 +5,13 @@ import json
 
 from selenium.webdriver.common.by import By
 import Config
+import Common
 import unicodedata
 from openpyxl import load_workbook
+
 from Common import get_app_id, get_short_code
 import requests
 
-from instagram import Common
 
 
 class LikerWorker(QThread):
@@ -105,7 +106,7 @@ class LikerWorker(QThread):
                         wb.save(file_path_name)
             else:
                 has_next_page = False
-                Common.error(self.parent.log_browser, f'{rownum}번째 데이터 추출 완료')
+                Common.error(self.parent.log_browser, '좋아요 추출 중 오류가 발생했습니다.')
 
         wb.save(file_path_name)
 
