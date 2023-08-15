@@ -17,7 +17,7 @@
    <bool>false</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -145,6 +145,16 @@
        </item>
        <item>
         <widget class="QLineEdit" name="edit_target_id"/>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="check_background">
+         <property name="text">
+          <string>백그라운드 실행</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QPushButton" name="btn_start">

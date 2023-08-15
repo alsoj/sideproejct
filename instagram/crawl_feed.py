@@ -41,22 +41,26 @@ class INSTA_Window(QMainWindow, form_class):
         # self.edit_target_id.setText('go.ownos')
         # self.edit_target_id.setText('handok_motors')
 
-        self.browser = execute_browser()
         self.login_id = None
         self.login_pw = None
         self.target_id = None
         self.traget_user_profile = None
         self.all_period = False
-
-        self.login_worker = LoginWorker(self)
-        self.profile_worker = ProfileWorker(self)
-        self.timeline_worker = TimelineWorker(self)
+        self.browser = None
 
         self.directory_name = None
         self.file_name = None
 
+        self.login_worker = None
+        self.profile_worker = None
+        self.timeline_worker = None
+
     # 피드 크롤링 클릭
     def btn_start_clicked(self):
+        self.browser = execute_browser(self.check_background.isChecked())
+        self.login_worker = LoginWorker(self)
+        self.profile_worker = ProfileWorker(self)
+        self.timeline_worker = TimelineWorker(self)
 
         # 버튼 비활성화
         self.button_activate(False)
@@ -82,8 +86,11 @@ class INSTA_Window(QMainWindow, form_class):
         create_excel(self.directory_name, self.file_name)
 
         # 로그인
-        self.set_id_pw()
-        self.login_worker.start()
+        try:
+            self.set_id_pw()
+            self.login_worker.start()
+        except:
+            self.button_activate(True)
 
     # ID/PW 세팅
     def set_id_pw(self):
@@ -92,63 +99,73 @@ class INSTA_Window(QMainWindow, form_class):
 
     # 로그인 콜백
     def after_login(self):
-        # 사용자 프로필 추출
-        self.profile_worker.set_target_id(self.edit_target_id.text())
-        self.profile_worker.run()
+        try:
+            # 사용자 프로필 추출
+            self.profile_worker.set_target_id(self.edit_target_id.text())
+            self.profile_worker.run()
+        except:
+            self.button_activate(True)
 
     # 사용자 정보 추출
     def after_profile(self):
-        user_profile = self.profile_worker.user_profile
+        try:
+            user_profile = self.profile_worker.user_profile
 
-        wb = load_workbook(Config.FILE_PATH + self.directory_name + self.file_name, data_only=True)
-        ws = wb.active
-        ws.append([''])
-        ws.append(['','사용자 ID', user_profile['username']])
-        ws.append(['','사용자 명', user_profile['full_name']])
-        ws.append(['','계정 설명', user_profile['biography']])
-        ws.append(['','게시글 수', user_profile['edge_owner_to_timeline_media']['count']])
-        ws.append(['','팔로워 수', user_profile['edge_followed_by']['count']])
-        ws.append(['','팔로우 수', user_profile['edge_follow']['count']])
-        ws.append([''])
-        ws.append(['','작성자ID', '작성일시', '게시글 URL', '좋아요 수', '댓글 수', '내용', '태그'])
-        wb.save(Config.FILE_PATH + self.directory_name + self.file_name)
+            wb = load_workbook(Config.FILE_PATH + self.directory_name + self.file_name, data_only=True)
+            ws = wb.active
+            ws.append([''])
+            ws.append(['','사용자 ID', user_profile['username']])
+            ws.append(['','사용자 명', user_profile['full_name']])
+            ws.append(['','계정 설명', user_profile['biography']])
+            ws.append(['','게시글 수', user_profile['edge_owner_to_timeline_media']['count']])
+            ws.append(['','팔로워 수', user_profile['edge_followed_by']['count']])
+            ws.append(['','팔로우 수', user_profile['edge_follow']['count']])
+            ws.append([''])
+            ws.append(['','작성자ID', '작성일시', '게시글 URL', '좋아요 수', '댓글 수', '내용', '태그'])
+            wb.save(Config.FILE_PATH + self.directory_name + self.file_name)
 
-        # 사용자 피드 추출
-        self.timeline_worker.set_target_id(self.edit_target_id.text())
-        if self.all_period:
-            from_date = date(1, 1, 1)
-            to_date = date(9999, 12, 31)
-        else:
-            from_date = self.edit_date_from.date().toPyDate()
-            to_date = self.edit_date_to.date().toPyDate()
-        self.timeline_worker.set_target_date_from(from_date)
-        self.timeline_worker.set_target_date_to(to_date)
-        self.timeline_worker.run()
+            # 사용자 피드 추출
+            self.timeline_worker.set_target_id(self.edit_target_id.text())
+            if self.all_period:
+                from_date = date(1, 1, 1)
+                to_date = date(9999, 12, 31)
+            else:
+                from_date = self.edit_date_from.date().toPyDate()
+                to_date = self.edit_date_to.date().toPyDate()
+            self.timeline_worker.set_target_date_from(from_date)
+            self.timeline_worker.set_target_date_to(to_date)
+            self.timeline_worker.run()
+        except:
+            self.button_activate(True)
 
     # 사용자 피드 추출 콜백
     def after_timeline(self):
-        wb = load_workbook(Config.FILE_PATH + self.directory_name + self.file_name, data_only=True)
-        ws = wb.active
+        try:
+            wb = load_workbook(Config.FILE_PATH + self.directory_name + self.file_name, data_only=True)
+            ws = wb.active
 
-        for result in self.timeline_worker.result_list:
-            ws.append([
-                '',
-                result['username'],
-                result['taken_at'],
-                f"https://www.instagram.com/p/{result['code']}/",
-                result['like_count'],
-                result['comment_count'],
-                result['caption'],
-                ' \r\n'.join(str(s) for s in get_hashtag(result['caption']))
-            ])
+            for result in self.timeline_worker.result_list:
+                ws.append([
+                    '',
+                    result['username'],
+                    result['taken_at'],
+                    f"https://www.instagram.com/p/{result['code']}/",
+                    result['like_count'],
+                    result['comment_count'],
+                    result['caption'],
+                    ' \r\n'.join(str(s) for s in get_hashtag(result['caption']))
+                ])
 
-            # 이미지 다운로드
-            download_img(result['image_url'], Config.FILE_PATH + self.directory_name + result['code'])
+                # 이미지 다운로드
+                download_img(result['image_url'], Config.FILE_PATH + self.directory_name + result['code'])
+                wb.save(Config.FILE_PATH + self.directory_name + self.file_name)
+
             wb.save(Config.FILE_PATH + self.directory_name + self.file_name)
-
-        wb.save(Config.FILE_PATH + self.directory_name + self.file_name)
-        self.button_activate(True)
-        info(self.log_browser, "사용자 피드 추출이 완료되었습니다.")
+        finally:
+            self.button_activate(True)
+            if hasattr(self, 'browser') and self.browser is not None:
+                self.browser.quit()
+            info(self.log_browser, "사용자 피드 추출이 완료되었습니다.")
 
     # 전체 기간 선택
     def check_all_period(self, state):
@@ -163,6 +180,7 @@ class INSTA_Window(QMainWindow, form_class):
         self.edit_login_id.setEnabled(enable)
         self.edit_login_pw.setEnabled(enable)
         self.edit_target_id.setEnabled(enable)
+        self.check_background.setEnabled(enable)
 
         if enable and self.all_period:  # 활성화 시에는 전체기간 선택 상태면 기간 선택만 활성화
             self.check_date_all.setEnabled(enable)
